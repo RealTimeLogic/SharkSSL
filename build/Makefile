@@ -60,7 +60,7 @@ endif
 $(ODIR)/%$(O) : %.c
 	$(CC) $(CFLAGS) $(OFT)$@ $<
 
-SOURCE = $(notdir $(wildcard ../src/*.c))
+SOURCE = $(filter-out SeCtx.c, $(notdir $(wildcard ../src/*.c)))
 
 OBJS = $(SOURCE:%.c=$(ODIR)/%$(O))
 
@@ -100,11 +100,11 @@ SharkSSLParseKey$(EXT): $(ODIR)/SharkSSLParseKey$(O)
 examples: CertCheck$(EXT) \
 	  WsEchoClient$(EXT) \
 	  LED-SMQ$(EXT) \
-	  smtp$(EXT) \
 	  SharkTrust$(EXT) \
 	  Chat-MQTT$(EXT) \
 	  AWS-MQTT$(EXT) \
-	  JSONEX
+	  JSONEX \
+	  smtp$(EXT)
 
 
 CertCheck$(EXT): $(ODIR)/CertCheck$(O) $(ODIR)/selib$(O)
