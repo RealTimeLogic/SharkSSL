@@ -54,3 +54,7 @@ All examples below use TLS. We recommend reading the article [Certificate Manage
 ## Makefile
 
 A basic makefile for Linux is included. The makefile shows how to build the [SharkSSL command line tools](https://realtimelogic.com/ba/doc/en/C/shark/md_md_Certificate_Management.html#CertificateTools) and most of the examples. The command line tools can also be compiled for Windows. Note that the examples requiring configuration will not work when compiled without modifications. The SMTP-example.c produces a compile error when not configured.
+
+## SharkSSL IDE
+
+For FreeRTOS users: check out the super easy to use [SharkSSL IDE](https://realtimelogic.com/downloads/sharkssl/ESP32/) designed for educational purposes.
