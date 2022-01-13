@@ -21,7 +21,6 @@ export OFT := -o$(SPACE)
 export LNKOFT := -o$(SPACE)
 export LIBPFX := lib
 export LIBEXT := .a
-CFLAGS+=$(XCFLAGS)
 #CFLAGS+=-DB_LITTLE_ENDIAN
 CFLAGS+=-Wall -c -fno-strict-aliasing
 ifeq (debug,$(build))
@@ -51,6 +50,7 @@ endif
 CFLAGS+= $(IFT)../inc
 CFLAGS+=$(IFT)../examples $(IFT)../src/SMTP # For SMTP example
 CFLAGS+=$(IFT)../src/MinnowServer
+CFLAGS+=$(XCFLAGS)
 
 ifndef ODIR
 ODIR = obj
@@ -140,8 +140,8 @@ clean:
 
 
 JSONEX:
-ifneq ($(wildcard ../JSON/.*),)
-	$(MAKE) XVPATH=../JSON/src XCFLAGS="-DJSONEXAMPLE -DNO_JVAL_DEPENDENCY -I../JSON/inc" LED-JSON$(EXT)
+ifneq ($(wildcard ../../JSON/.*),)
+	$(MAKE) XVPATH=../../JSON/src XCFLAGS="-DJSONEXAMPLE -DNO_JVAL_DEPENDENCY -I../../JSON/inc" LED-JSON$(EXT)
 else
 	@echo "INFO: No JSON directory. Cannot build M2M-LED demo with JSON encoding/decoding."
 endif
