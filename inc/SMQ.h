@@ -12,9 +12,9 @@
  *   This file is part of SharkMQ:
  *            https://realtimelogic.com/products/sharkssl/SharkMQ/
  *
- *   $Id: SMQ.h 4769 2021-06-11 17:29:36Z gianluca $
+ *   $Id: SMQ.h 5021 2022-01-13 18:59:01Z wini $
  *
- *   COPYRIGHT:  Real Time Logic LLC, 2014 - 2019
+ *   COPYRIGHT:  Real Time Logic LLC, 2014 - 2022
  *
  *   This software is copyrighted by and is the sole property of Real
  *   Time Logic LLC.  All rights, title, ownership, or other interests in
@@ -133,7 +133,7 @@
 /** Asynchronous #SharkMQ_createsub response message received via
     #SharkMQ_getMessage.
 
-    \li SharkMQ::ptid is set to the created Sub Topic ID.
+    \li SharkMQ::ptid is set to the created Subtopic ID.
     \li SharkMQ::status is set to zero (0) if the request was accepted and
     a negative value if the request was denied.
  */

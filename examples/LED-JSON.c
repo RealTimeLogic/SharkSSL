@@ -9,7 +9,7 @@
  ****************************************************************************
  *   PROGRAM MODULE
  *
- *   $Id: LED-JSON.c 4972 2021-12-27 19:37:51Z wini $
+ *   $Id: LED-JSON.c 5021 2022-01-13 18:59:01Z wini $
  *
  *   COPYRIGHT:  Real Time Logic LLC, 2014 - 2021
  *
@@ -548,8 +548,8 @@ M2MLED_constructor(M2MLED* o, SecCon* sc)
 {
    JParserIntf_constructor((JParserIntf*)o,  /* cast to base class */
                            M2MLED_parserCallback);
-   BufPrint_constructor(&o->out, sc, BufPrint_sockWrite);
-   BufPrint_setBuf(&o->out, o->outBuf, IN_OUT_BUF_SIZE);
+   BufPrint_constructor2(
+      &o->out, o->outBuf, IN_OUT_BUF_SIZE, sc, BufPrint_sockWrite);
    JErr_constructor(&o->err);
    JEncoder_constructor(&o->encoder, &o->err, &o->out);
    JDecoder_constructor(&o->decoder, o->inBuf, IN_OUT_BUF_SIZE, 0);
