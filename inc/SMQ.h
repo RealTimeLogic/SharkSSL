@@ -12,7 +12,7 @@
  *   This file is part of SharkMQ:
  *            https://realtimelogic.com/products/sharkssl/SharkMQ/
  *
- *   $Id: SMQ.h 5021 2022-01-13 18:59:01Z wini $
+ *   $Id: SMQ.h 5029 2022-01-16 21:32:09Z wini $
  *
  *   COPYRIGHT:  Real Time Logic LLC, 2014 - 2022
  *
@@ -91,12 +91,6 @@
  */
 #define SMQE_PONGTIMEOUT     -10005
 
-
-/** The SharkMQ_getMessage call timed out.
- */
-#define SMQE_TIMEOUT         -10100
-
-
 /** @} */ /* end SharkMQErrorCodes */
 
 
@@ -146,6 +140,10 @@
     \li SharkMQ::status is set to the number of clients subscribed to the topic.
  */
 #define SMQ_SUBCHANGE        -20003
+
+ /** The SharkMQ_getMessage call timed out.
+  */
+#define SMQ_TIMEOUT         -20004
 
 /** @} */ /* end SharkMQRespCodes */
 
@@ -578,6 +576,11 @@ int SharkMQ_unobserve(SharkMQ* o, U32 tid);
     number of milliseconds you want to wait for incoming messages
     before the timeout triggers. Note: Setting a long timeout may
     interfere with the built in PING timer.
+
+    \returns
+      \li < 0: An error or a control message such as #SMQ_SUBACK
+      \li >= 0: An SMQ message with this length
+
  */
 int SharkMQ_getMessage(SharkMQ* o, U8** msg);
 

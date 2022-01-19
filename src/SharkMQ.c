@@ -14,9 +14,9 @@
  *   SharkMQ is a secure SMQ client.
  *   See the example program for how to use SMQ: m2m-led-SharkMQ.c 
  *
- *   $Id: SharkMQ.c 4790 2021-06-25 22:23:31Z wini $
+ *   $Id: SharkMQ.c 5029 2022-01-16 21:32:09Z wini $
  *
- *   COPYRIGHT:  Real Time Logic LLC, 2014 - 2019
+ *   COPYRIGHT:  Real Time Logic LLC, 2014 - 2022
  *
  *   This software is copyrighted by and is the sole property of Real
  *   Time Logic LLC.  All rights, title, ownership, or other interests in
@@ -99,7 +99,7 @@ static int
 SharkMQ_setErrStatus(SharkMQ* o, int status)
 {
    baAssert(status < 0);
-   if(SMQE_TIMEOUT != status)
+   if(SMQ_TIMEOUT != status)
    {
       o->sharkBufIx=o->bufIx=o->frameLen=o->bytesRead=0;
       o->sharkBuf=0;
@@ -119,7 +119,7 @@ SharkMQ_recv(SharkMQ* o, U16 len, U8** data)
    {
       int rlen;
       if( (rlen=seSec_read(o->scon, &o->sock, &o->sharkBuf,o->timeout)) <= 0)
-         return SharkMQ_setErrStatus(o, rlen == 0 ? SMQE_TIMEOUT : rlen);
+         return SharkMQ_setErrStatus(o, rlen == 0 ? SMQ_TIMEOUT : rlen);
       o->sharkBufLen = (U16)rlen;
       o->bufIx = o->sharkBufIx = 0;
    }
@@ -317,7 +317,7 @@ SharkMQ_init(SharkMQ* o, SharkSslCon* scon, const char* url, U32* rnd)
            (char*)buf)) <= 0 )
    {
       se_close(&o->sock);
-      return o->status = (x == 0 ? SMQE_TIMEOUT : x);
+      return o->status = (x == 0 ? SMQ_TIMEOUT : x);
    }
    /* Send HTTP header. Host is included for multihomed servers */
    o->sendBufIx=0;
@@ -356,7 +356,7 @@ SharkMQ_connect(SharkMQ* o, const char* uid, int uidLen,
                 U16 maxTlsFrameSize)
 {
    U8* buf;
-   if(SMQE_TIMEOUT != o->status)
+   if(SMQ_TIMEOUT != o->status)
    {
       buf = SharkSslCon_getEncBufPtr(o->scon);
       if(SharkSslCon_getEncBufSize(o->scon) < 5+uidLen+credLen+infoLen)
@@ -378,7 +378,7 @@ SharkMQ_connect(SharkMQ* o, const char* uid, int uidLen,
    }
    /* Get the response message Connack */
    if(SharkMQ_readFrame(o))
-      return SMQE_TIMEOUT == o->status ? 0 : o->status;
+      return SMQ_TIMEOUT == o->status ? 0 : o->status;
    buf = o->buf;
    if(o->frameLen < 8 || buf[2] != MSG_CONNACK)
       return SharkMQ_setErrStatus(o,SMQE_PROTOCOL_ERROR);
@@ -595,7 +595,7 @@ SharkMQ_getMessage(SharkMQ* o, U8** msg)
          U16 left = o->frameLen - o->bytesRead;
          x = SharkMQ_recv(o, left, msg);
          if(x > 0) o->bytesRead += (U16)x;
-         else if(SMQE_TIMEOUT == x) return 0;
+         else if(SMQ_TIMEOUT == x) return 0;
          else o->bytesRead = 0;
          return x;
       }
@@ -607,7 +607,7 @@ L_readMore:
    if(o->bufIx < 3 && SharkMQ_recHeader(o, 3))
    {
       /* Timeout is not an error in between frames */
-      if(o->status == SMQE_TIMEOUT)
+      if(o->status == SMQ_TIMEOUT)
       {
          if(o->pingTmoCounter >= 0)
          {
@@ -629,9 +629,7 @@ L_readMore:
             if(o->pingTmoCounter >= 0)
                return SharkMQ_setErrStatus(o,SMQE_PONGTIMEOUT);
          }
-         return 0;
       }
-      /* else */
       return o->status;
    }
    o->pingTmoCounter=0;
@@ -652,7 +650,7 @@ L_readMore:
       case MSG_CREATESUBACK:
       case MSG_SUBACK:
          if(SharkMQ_readFrame(o))
-            return SMQE_TIMEOUT == o->status ? 0 : o->status;
+            return SMQ_TIMEOUT == o->status ? 0 : o->status;
          if(o->frameLen < 9)
             return SharkMQ_setErrStatus(o,SMQE_PROTOCOL_ERROR);
          if(o->buf[3]) /* Denied */
@@ -681,7 +679,7 @@ L_readMore:
          if(o->frameLen < 15) 
             return SharkMQ_setErrStatus(o,SMQE_PROTOCOL_ERROR);
          if(o->bufIx < 15 && SharkMQ_recHeader(o, 15))
-            return SMQE_TIMEOUT == o->status ? 0 : o->status;
+            return SMQ_TIMEOUT == o->status ? 0 : o->status;
          o->bufIx=0; /* Prepare for next SMQ frame */
          netConvU32((U8*)&o->tid, o->buf+3);
          netConvU32((U8*)&o->ptid, o->buf+7);
@@ -713,7 +711,7 @@ L_readMore:
          if(o->frameLen != 11)
             return SharkMQ_setErrStatus(o,SMQE_PROTOCOL_ERROR);
          if(SharkMQ_readFrame(o))
-            return SMQE_TIMEOUT == o->status ? 0 : o->status;
+            return SMQ_TIMEOUT == o->status ? 0 : o->status;
          netConvU32((U8*)&o->ptid, o->buf+7);
          o->status = (int)o->ptid;
          netConvU32((U8*)&o->ptid, o->buf+3);
