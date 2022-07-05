@@ -10,7 +10,7 @@
  ****************************************************************************
  *   PROGRAM MODULE
  *
- *   $Id: WsEchoClient.c 4972 2021-12-27 19:37:51Z wini $
+ *   $Id: WsEchoClient.c 5120 2022-03-24 15:25:13Z wini $
  *
  *   COPYRIGHT:  Real Time Logic LLC, 2013 - 2021
  *
@@ -79,6 +79,13 @@ https://realtimelogic.info/WS-ELIZA/
 #include "CA-list.h"
 #else
 #include "certificates/CA_RTL_EC_256.h"
+#endif
+
+/* This example defaults to using secure connection, but it can be set to non secure by defining WSC_NONSEC
+ * Macro WSC_DUAL must be defined when using non secure mode.
+*/
+#if defined(WSC_NONSEC) && !defined(WSC_DUAL)
+#error WSC_DUAL must be defined when WSC_NONSEC is set
 #endif
 
 #if  HOST_PLATFORM == 1
@@ -208,20 +215,36 @@ mainTask(SeCtx* ctx)
       "Copyright (c) 2016 Real Time Logic.  All rights reserved.\n"
    };
 
+#ifndef WSC_NONSEC
    SharkSsl sharkSsl;
+#endif
    SharkSslCon* sharkSslCon;
    int rc,status;
-
-   WscReadState wss={0};
-
+   WscState wss={0};
    static SOCKET sock; /* Must be static if SeCtx is used */
+
+#ifdef WSC_NONSEC
+   /* Must set the following when not in secure mode */
+   U8 sendBuf[512];
+   U8 recBuf[512];
+   wss.recBuf=recBuf;
+   wss.recBufLen=sizeof(recBuf);
+   wss.sendBuf=sendBuf;
+   wss.sendBufLen=sizeof(sendBuf);
+#endif
+
    SOCKET_constructor(&sock, ctx);
+   wss.sock=&sock;
 
    xprintf(("%s",info));
    /*! [inline doc] */
    xprintf(("Connecting to " WSHOST "...\n"));
    /* Port 443 is the listen port for secure servers i.e. HTTPS */
+#ifdef WSC_NONSEC
+   status=se_connect(&sock, WSHOST, 80);
+#else
    status=se_connect(&sock, WSHOST, 443);
+#endif
    if(status)
    {
       const char* msg;
@@ -245,12 +268,12 @@ mainTask(SeCtx* ctx)
       system start and to keep these objects for the lifetime of the
       program/firmware.
     */
+#ifndef WSC_NONSEC
    SharkSsl_constructor(&sharkSsl,
                         SharkSsl_Client, /* Two options: client or server */
                         0,      /* Not using SSL cache */
                         4000,   /* initial inBuf size: Can grow */
                         4000);   /* outBuf size: Fixed */
-
    /* Enable server certificate validation. See Ref: CA-LIST
     */
 #ifdef ECHO_EX
@@ -265,20 +288,25 @@ mainTask(SeCtx* ctx)
    if( (sharkSslCon = SharkSsl_createCon(&sharkSsl)) == 0)
       xprintf(("Cannot create SharkSslCon object.\n"));
    else /* We are now connected to the server. */
+#else /* WSC_NONSEC */
+   sharkSslCon=0;
+#endif /* WSC_NONSEC */
    {
+      wss.scon=sharkSslCon;
       setChaChaCipher(sharkSslCon);
       /* Keep seeding (Make it more secure: Ref-seed) */
+#ifndef WSC_NONSEC
       sharkssl_entropy(baGetUnixTime() ^ (ptrdiff_t)&sharkSsl);
+#endif
       /* Establish a WS connection */
-      if( (status=wscProtocolHandshake(
-              &wss, sharkSslCon, &sock,6000,WSHOST,WSURI,0)) > 0 )
+      if( (status=wscProtocolHandshake(&wss,6000,WSHOST,WSURI,0)) > 0 )
       {
          U8 sbuf[255];
          int sbufIx=0; /* sbuf cursor */
          U8* rbuf; /* Receive buffer is managed by SharkSSL */
          int idleCounter=0;
 
-         if(status !=
+         if(sharkSslCon && status !=
 #if SHARKSSL_CHECK_DATE
             SharkSslConTrust_CertCnDate
 #else
@@ -293,7 +321,7 @@ mainTask(SeCtx* ctx)
 #ifdef ECHO_EX
          xprintf(("\n------\nConnected\nEnter data and press the ENTER key\n"));
 #endif
-         while((rc = wscRead(&wss,sharkSslCon,&sock,&rbuf,50)) >= 0)
+         while((rc = wscRead(&wss,&rbuf,50)) >= 0)
          {
             if(rc) /* incomming data from server */
             {
@@ -308,7 +336,7 @@ mainTask(SeCtx* ctx)
                      xprintf(("%c", *rbuf++));
                   if(wss.bytesRead == wss.frameLen)
                      break; /* We are done receiving the current frame */
-               } while( (rc=wscRead(&wss,sharkSslCon,&sock,&rbuf,10000)) > 0 );
+               } while( (rc=wscRead(&wss,&rbuf,10000)) > 0 );
 #ifdef ECHO_EX
                xprintf(("\nEnd WS frame.\n"));
 #endif
@@ -329,7 +357,7 @@ mainTask(SeCtx* ctx)
                   if(c == '\n' || sbufIx == sizeof(sbuf))
                   {
                      /* Send console data to server */
-                     rc = wscSendBin(sharkSslCon,&sock,sbuf,sbufIx);
+                     rc = wscSendBin(&wss,sbuf,sbufIx);
                      sbufIx=0;
                      idleCounter=0;
                      if(c != '\n')
@@ -349,18 +377,21 @@ mainTask(SeCtx* ctx)
                    * pings. This is just an example. (Ref-Ping). Note,
                    * ping payload data is not required.
                    */
-                  rc=wscSendCtrl(
-                     sharkSslCon,&sock,WSOP_Ping,msg,sizeof(msg)-1);
+                  rc=wscSendCtrl(&wss,WSOP_Ping,msg,sizeof(msg)-1);
                   if(rc < 0) break;
                }
             }
          }
       }
       /* Release resources used by sharkSslCon */
+#ifndef WSC_NONSEC
       SharkSsl_terminateCon(&sharkSsl, sharkSslCon);
+#endif
    }
 
+#ifndef WSC_NONSEC
    SharkSsl_destructor(&sharkSsl);
+#endif
    se_close(&sock);
    /*! [inline doc] */
    xprintf(("\nServer connection closed!\nPress ENTER to continue."));

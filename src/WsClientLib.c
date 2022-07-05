@@ -11,9 +11,9 @@
  ****************************************************************************
  *   PROGRAM MODULE
  *
- *   $Id: WsClientLib.c 4880 2021-10-17 19:48:43Z wini $
+ *   $Id: WsClientLib.c 5120 2022-03-24 15:25:13Z wini $
  *
- *   COPYRIGHT:  Real Time Logic LLC, 2014 - 2016
+ *   COPYRIGHT:  Real Time Logic LLC, 2014 - 2022
  *
  *   This software is copyrighted by and is the sole property of Real
  *   Time Logic LLC.  All rights, title, ownership, or other interests in
@@ -139,39 +139,24 @@ msCpAndInc(U8* dest, int* dlen, const U8* src, int slen)
  * This function sends the HTTP header and validates the server's HTTP
  * response header -- the function simulates a very basic HTTP client
  * library. The function is designed to be as simple as possible and
- * the code is, for this reason, making a few assumptions that could fail
- * when used with a non traditional HTTP server. Most HTTP servers
- * will send a complete HTTP response as one chunk, and the call to
- * function seSec_read below assumes that we read the complete
- * HTTP response (Ref-Underflow). The function will fail and return a
- * negative value if it does not receive the complete HTTP response.
- *
- * Another assumption made is that the seSec_read call below
- * will receive the HTTP header and nothing more. The WS protocol
- * starts directly after the HTTP response code, and it could
- * theoretically be possible that a response includes parts of a WS
- * frame if the server sends WS data immediately after the HTTP
- * response. The likelihood of this happening is virtually non-
- * existing since the SSL protocol is frame based and the SSL protocol
- * will help us receive the HTTP header response and nothing
- * more. Pending socket data will be returned the next time
- * seSec_read is called. The parameter 'wss' is not used in this
- * function, but you can use it and set the 'overflowPtr' and
- * 'overflowLen' in the unlikely event that your server sends part of
- * the WS frame in the same SSL frame as the HTTP response
- * header. (Ref-Overflow)
+ * the code is, for this reason, making a few assumptions that could
+ * fail when used with a non traditional HTTP server. Most HTTP
+ * servers will send a complete HTTP response as one chunk, and the
+ * call to function seSec_read below assumes that we read the complete
+ * HTTP response when in secure mode (Ref-Underflow). The function
+ * will fail and return a negative value if it does not receive the
+ * complete HTTP response.
  */
 int
-wscProtocolHandshake(WscReadState* wss,SharkSslCon *s,SOCKET* sock,U32 tmo,
-                     const char* host, const char* path, const char* origin)
+wscProtocolHandshake(WscState* wss, U32 tmo, const char* host,
+                     const char* path, const char* origin)
 {
-   int rc; /* Status or len */
+   int rc=1; /* Status or len */
    int hs=-1; /* handshake status */
+   U8* ptr;
 
-   (void)wss; /* Currently not used: Ref-Overflow */
-   
-    /* Keep seeding (Ref-seed) */
-   sharkssl_entropy((ptrdiff_t)&wscProtocolHandshake);
+   if(!wss->sock)
+      return -100;
 
    /* SSL is a client server protocol and we must initiate the
     * connection by sending SSL hello. The following function (in
@@ -179,17 +164,42 @@ wscProtocolHandshake(WscReadState* wss,SharkSslCon *s,SOCKET* sock,U32 tmo,
     * validating the server cert in this example. See the 'certcheck.c'
     * example for how to validate the server.
     */
-   if( (rc = seSec_handshake(s, sock, tmo, host)) <= 0 )
+   if( 
+#ifdef WSC_DUAL
+      wss->scon &&
+#endif
+      (rc = seSec_handshake(wss->scon, wss->sock, tmo, host)) <= 0 )
+   {
       xprintf(("SSL handshake failed\n"));
+   }
    else
    {
       static const U8 xg[] = {"GET "};
       static const U8 xp[] = {" HTTP/1.1\r\n"};
       static const U8 xh[] = {"Host: "};
       static const U8 xo[] = {"\r\nOrigin: "};
-      int sblen=SharkSslCon_getEncBufSize(s);
-      U8* sbuf=SharkSslCon_getEncBufPtr(s); /* Using zero copy SharkSSL API */
-      U8* ptr=msCpAndInc(sbuf,&sblen,xg,sizeof(xg)-1);
+      int sblen;
+      U8* sbuf;
+#ifdef WSC_DUAL
+      if(wss->scon)
+      {
+         /* Using zero copy SharkSSL API */
+         sblen=SharkSslCon_getEncBufSize(wss->scon);
+         sbuf=SharkSslCon_getEncBufPtr(wss->scon);
+      }
+      else
+      {
+         sblen=wss->sendBufLen;
+         sbuf=wss->sendBuf;
+         if(!sblen || !sbuf || !wss->recBufLen || !wss->recBuf)
+            return -101;
+      }
+#else
+      /* Using zero copy SharkSSL API */
+      sblen=SharkSslCon_getEncBufSize(wss->scon);
+      sbuf=SharkSslCon_getEncBufPtr(wss->scon);
+#endif
+      ptr=msCpAndInc(sbuf,&sblen,xg,sizeof(xg)-1);
       hs=rc;
       ptr=msCpAndInc(ptr,&sblen,(U8*)path,0);
       ptr=msCpAndInc(ptr,&sblen,xp,sizeof(xp)-1);
@@ -202,14 +212,58 @@ wscProtocolHandshake(WscReadState* wss,SharkSslCon *s,SOCKET* sock,U32 tmo,
       }
       ptr=msCpAndInc(ptr,&sblen,httpCmd,sizeof(httpCmd)-1);
       if(!ptr)
-         return -1; /* The send buffer is too small */
+         return -102; /* The send buffer is too small */
       /* Send the WebSocket HTTP header */
-      if((rc=seSec_write(s, sock, 0, ptr-sbuf)) < 0)
+#ifdef WSC_DUAL
+      if((rc=(wss->scon ? seSec_write(wss->scon, wss->sock, 0, ptr-sbuf) :
+              se_send(wss->sock, sbuf, ptr-sbuf)) ) < 0)
+#else
+      if((rc=seSec_write(wss->scon, wss->sock, 0, ptr-sbuf)) < 0)
+#endif
+      {
          xprintf(("Sending HTTP header failed\n"));
+      }
       else
       {
-         U8* buf; /* Managed by sharkSSL */
-         if( (rc = seSec_read(s,sock,&buf,tmo)) <= 0 )
+         U8* buf;
+#ifdef WSC_DUAL
+         if(wss->scon)
+         {
+            /* We assume a complete HTTP response is received within
+             * the TLS frame received.
+             */ 
+            rc=seSec_read(wss->scon,wss->sock,&buf,tmo);
+         }
+         else
+         {
+            /* Keep reading until the complete HTTP response has been
+             * received.
+             */
+            int rcx=0;
+            int len=wss->recBufLen;
+            ptr=buf=wss->recBuf;
+            for(;;)
+            {
+               if( (rc = se_recv(wss->sock,ptr,len,tmo)) <= 0)
+                  break;
+               rcx+=rc;
+               if(strstrn(buf, len, (U8*)"\r\n\r\n"))
+               {
+                  rc=rcx;
+                  break;
+               }
+               len-=rc;
+               ptr+=rc;
+               if(len <=0)
+                  return -103;/* recBuf must be larger */
+            }
+         }
+#else
+         if( ! wss->scon )
+            return -104;
+         rc = seSec_read(wss->scon,wss->sock,&buf,tmo);
+#endif
+         if( rc <= 0 )
          {
             xprintf(("HTTP response header error: %s.\n",
                      rc == 0 ? "timeout" : "connection closed"));
@@ -218,10 +272,7 @@ wscProtocolHandshake(WscReadState* wss,SharkSslCon *s,SOCKET* sock,U32 tmo,
          else
          {  /* Parse (validate) server's HTTP response */
             int len=rc;
-            U8* ptr=buf;
-            /* for dbg: while (len--) xprintf(("%c", *ptr++)); */
-            len=rc;
-            rc=-1;
+            ptr=buf;
             /* The value in Sec-WebSocket-Accept is designed for
              * browsers so they can detect malicious JavaScript
              * code. The security concept is not relevant to non
@@ -235,10 +286,21 @@ wscProtocolHandshake(WscReadState* wss,SharkSslCon *s,SOCKET* sock,U32 tmo,
             {
                 /* Find end of HTTP response */
                ptr=strstrn(buf, len, (U8*)"\r\n\r\n");
-               if(!ptr || ptr-buf+4 != len) /* Ref-Underflow and Ref-Overflow */
+               if(!ptr) /* Ref-Underflow */
+               {
                   xprintf(("Cannot validate HTTP header response\n"));
-               else
-                  rc=0; /* Successful HTTP and WS handshake */
+                  rc=-2;
+               }
+               else /* Successful HTTP and WS handshake */
+               {
+                  rc=ptr-buf+4;
+                  if(rc < len)
+                  {
+                     wss->overflowPtr=ptr+4;
+                     wss->overflowLen=len-rc;
+                  }
+                  rc=0; /* Success */
+               }
             }
          }
       }
@@ -263,15 +325,30 @@ wscProtocolHandshake(WscReadState* wss,SharkSslCon *s,SOCKET* sock,U32 tmo,
  * Note: this is an internal function. You should use wscSendBin.
  */
 static int
-wscRawWrt(SharkSslCon *s, SOCKET* sock, U8 opCode, const U8* buf, int len)
+wscRawWrt(WscState* wss, U8 opCode,const U8* buf,int len)
 {
    int i, frameLen;
    U8* sbuf;
    U8* ptr;
    U8* maskPtr;
-   if(len+8 > SharkSslCon_getEncBufSize(s))
+#ifdef WSC_DUAL
+   if(wss->scon)
+   {
+      if(len+8 > SharkSslCon_getEncBufSize(wss->scon))
+         return -1;
+      sbuf=SharkSslCon_getEncBufPtr(wss->scon);
+   }
+   else
+   {
+      if(len+8 > wss->sendBufLen)
+         return -1;
+      sbuf=wss->sendBuf;
+   }
+#else
+   if(len+8 > SharkSslCon_getEncBufSize(wss->scon))
       return -1; /* Crank up the SharkSSL buffer size or use smaller messages */
-   sbuf=SharkSslCon_getEncBufPtr(s); /* Using zero copy SharkSSL API */
+   sbuf=SharkSslCon_getEncBufPtr(wss->scon); /* Using zero copy SharkSSL API */
+#endif
    sbuf[0] = opCode;
    if(len <= 125) /* Standard "Payload len" */
    {
@@ -284,7 +361,12 @@ wscRawWrt(SharkSslCon *s, SOCKET* sock, U8 opCode, const U8* buf, int len)
       else
       {
          sbuf[1] = 0; /* Mask bit not set since we do not have payload */
-         return seSec_write(s, sock, 0, 2);
+#ifdef WSC_DUAL
+         return wss->scon ? seSec_write(wss->scon, wss->sock, 0, 2) :
+            se_send(wss->sock, sbuf, 2);
+#else
+         return seSec_write(wss->scon, wss->sock, 0, 2);
+#endif
       }
    }
    else /* Extended payload */
@@ -313,8 +395,13 @@ wscRawWrt(SharkSslCon *s, SOCKET* sock, U8 opCode, const U8* buf, int len)
       *ptr = *buf ^ maskPtr[i&3];
    }
 
+#ifdef WSC_DUAL
+   return wss->scon ? seSec_write(wss->scon, wss->sock, 0, frameLen) :
+      se_send(wss->sock, sbuf, frameLen);
+#else
    /* We must set length to zero when using the zero copy SharkSSL API */
-   return seSec_write(s, sock, 0, frameLen);
+   return seSec_write(wss->scon, wss->sock, 0, frameLen);
+#endif
 }
 
 
@@ -322,9 +409,9 @@ wscRawWrt(SharkSslCon *s, SOCKET* sock, U8 opCode, const U8* buf, int len)
  *
  */
 int
-wscSendBin(SharkSslCon *s, SOCKET* sock, U8* buf, int len)
+wscSendBin(WscState* wss, U8* buf, int len)
 {
-   return wscRawWrt(s, sock, WSOP_Binary, buf, len);
+   return wscRawWrt(wss, WSOP_Binary, buf, len);
 }
 
 
@@ -332,10 +419,10 @@ wscSendBin(SharkSslCon *s, SOCKET* sock, U8* buf, int len)
  * 
  */
 int
-wscSendCtrl(SharkSslCon *s,SOCKET* sock, U8 opCode, const U8* buf,int len)
+wscSendCtrl(WscState* wss, U8 opCode, const U8* buf,int len)
 {
    if(len > 125) return -1; /* Max control frame payload is 125 */
-   return wscRawWrt(s, sock, opCode, buf, len);
+   return wscRawWrt(wss, opCode, buf, len);
 }
 
 
@@ -343,13 +430,13 @@ wscSendCtrl(SharkSslCon *s,SOCKET* sock, U8 opCode, const U8* buf,int len)
  * statusCode values: RFC6455 7.4.1
  */
 int
-wscClose(SharkSslCon *s, SOCKET* sock, int statusCode)
+wscClose(WscState* wss, int statusCode)
 {
    U8 ctrlBuf[2]; /* 2 byte status code RFC6455 5.5.1 */
    ctrlBuf[0] = (U8)((unsigned)statusCode >> 8); /* high */
    ctrlBuf[1] = (U8)statusCode; /* low */
-   wscSendCtrl(s,sock,WSOP_Close,ctrlBuf, statusCode > 0 ? 2 : 0);
-   se_close(sock);
+   wscSendCtrl(wss, WSOP_Close,ctrlBuf, statusCode > 0 ? 2 : 0);
+   se_close(wss->sock);
    return statusCode < 0 ? statusCode : -statusCode;
 }
 
@@ -360,12 +447,12 @@ wscClose(SharkSslCon *s, SOCKET* sock, int statusCode)
  * This function reads socket data by calling seSec_read. The
  * function decodes the WebSocket frame from the data on the TCP stream and
  * keeps track of the frame payload cursor. The frame information is
- * stored in WscReadState.
+ * stored in WscState.
  *
  * Note: this is an internal function. You should use wscRead.
  */
 static int
-wscRawRead(WscReadState* wss,SharkSslCon *s,SOCKET* sock,U8 **buf,U32 timeout)
+wscRawRead(WscState* wss,U8 **buf,U32 timeout)
 {
    U8* ptr;
    int len;
@@ -379,7 +466,13 @@ wscRawRead(WscReadState* wss,SharkSslCon *s,SOCKET* sock,U8 **buf,U32 timeout)
    else
    {
      L_readMore:
-      if( (len=seSec_read(s, sock, buf, timeout)) <= 0 )
+#ifdef WSC_DUAL
+      *buf=wss->recBuf;
+      if( (len=(wss->scon ? seSec_read(wss->scon, wss->sock, buf, timeout) :
+           se_recv(wss->sock, *buf, wss->recBufLen, timeout)) ) <= 0 )
+#else
+      if( (len=seSec_read(wss->scon, wss->sock, buf, timeout)) <= 0 )
+#endif
       {
          if(len == 0)
             wss->isTimeout = TRUE;
@@ -413,7 +506,7 @@ wscRawRead(WscReadState* wss,SharkSslCon *s,SOCKET* sock,U8 **buf,U32 timeout)
          baAssert(wss->frameHeaderIx == 4);
          /* We only accept 16 bit extended frames */
          if((wss->frameHeader[1] & 0x7F) > 126)
-            return wscClose(s, sock, 1009);
+            return wscClose(wss, 1009);
          wss->frameLen = (int)(((U16)wss->frameHeader[2]) << 8);
          wss->frameLen |= wss->frameHeader[3];
       }
@@ -445,18 +538,18 @@ wscRawRead(WscReadState* wss,SharkSslCon *s,SOCKET* sock,U8 **buf,U32 timeout)
  * including WebSocket close messages received from server.
  *
  * Note: larger WebSocket frames may be split into chunks. The member
- * values 'bytesRead' and 'frameLen' in struct WscReadState notifies
+ * values 'bytesRead' and 'frameLen' in struct WscState notifies
  * you on the total frame length and how much data you have read from
  * the socket for the current frame. See the example code for how to
  * use this function.
  */
 int
-wscRead(WscReadState* wss, SharkSslCon *s,SOCKET* sock, U8 **buf, U32 timeout)
+wscRead(WscState* wss, U8 **buf, U32 timeout)
 {
    int len;
    U8 ctrlBuf[125]; /* max control frame payload */
   L_readMore:
-   len = wscRawRead(wss, s, sock, buf, timeout);
+   len = wscRawRead(wss, buf, timeout);
    if(len >= 0 && !wss->isTimeout)
    {
       switch(wss->frameHeader[0])
@@ -468,7 +561,7 @@ wscRead(WscReadState* wss, SharkSslCon *s,SOCKET* sock, U8 **buf, U32 timeout)
          /* Control frames below */
 
          case WSOP_Close:
-            return wscClose(s, sock, 1000);
+            return wscClose(wss, 1000);
 
          case WSOP_Ping:
          case WSOP_Pong: /* RFC allows unsolicited pongs */
@@ -476,18 +569,17 @@ wscRead(WscReadState* wss, SharkSslCon *s,SOCKET* sock, U8 **buf, U32 timeout)
             {
                /* Cursor is bytesRead - len */
                if(wss->frameLen > 125) /* not allowed */
-                  return wscClose(s, sock, 1002);
+                  return wscClose(wss, 1002);
                memcpy(ctrlBuf + wss->bytesRead - len, *buf, len);
                if(wss->bytesRead < wss->frameLen)
                   goto L_readMore;
             }
             if(wss->frameHeader[0] == WSOP_Ping)
-               wscSendCtrl(s,sock,WSOP_Pong,ctrlBuf,wss->frameLen);
+               wscSendCtrl(wss,WSOP_Pong,ctrlBuf,wss->frameLen);
             goto L_readMore;
 
          default:  /* Unkown opcode (rsp 1002) or FIN=0 (rsp 1008) */
-            return wscClose(
-               s, sock, 0x80 & wss->frameHeader[0] ? 1002 : 1008);
+            return wscClose(wss, 0x80 & wss->frameHeader[0] ? 1002 : 1008);
       }
    }
    return len;

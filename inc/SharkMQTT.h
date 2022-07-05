@@ -11,9 +11,9 @@
  *   This file is part of SharkMQTT:
  *             https://realtimelogic.com/products/sharkmqtt/
  *
- *   $Id: SharkMQTT.h 4769 2021-06-11 17:29:36Z gianluca $
+ *   $Id: SharkMQTT.h 5100 2022-02-19 16:23:57Z wini $
  *
- *   COPYRIGHT:  Real Time Logic, 2015 - 2020
+ *   COPYRIGHT:  Real Time Logic, 2015 - 2022
  *
  *   This software is copyrighted by and is the sole property of Real
  *   Time Logic LLC.  All rights, title, ownership, or other interests in
@@ -108,8 +108,12 @@ typedef struct
  */
 #define SMQTTE_CONREFUSED       -10007
 
-/**  Returned by SharkMQTT_connect if a password was provided and if
-     the broker's certificate/name is not trusted.
+/** Returned by #SharkMQTT_connect if the MQTT broker is not
+ * trusted. SharkMQTT_connect calls #seSec_handshake and expects the
+ * return value from this function to be #SharkSslConTrust_CertCnDate
+ * if the code is compiled with the flag #SHARKSSL_CHECK_DATE=1 and the
+ * return value to be #SharkSslConTrust_CertCn if compiled without
+ * this flag set.
  */
 #define SMQTTE_SERVERNOTTRUSTED -10008
 

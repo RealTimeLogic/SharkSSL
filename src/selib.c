@@ -10,9 +10,9 @@
  ****************************************************************************
  *   PROGRAM MODULE
  *
- *   $Id: selib.c 4963 2021-12-17 00:32:59Z wini $
+ *   $Id: selib.c 5154 2022-05-15 22:45:13Z gianluca $
  *
- *   COPYRIGHT:  Real Time Logic LLC, 2013 - 2021
+ *   COPYRIGHT:  Real Time Logic LLC, 2013 - 2022
  *
  *   This software is copyrighted by and is the sole property of Real
  *   Time Logic LLC.  All rights, title, ownership, or other interests in
@@ -82,6 +82,12 @@ void printCiphersuite(U16 cipherSuite)
    #define _case_printf(c) case c: xprintf((#c)); break
    switch (cipherSuite)
    {
+      #if SHARKSSL_TLS_1_3
+      _case_printf(TLS_AES_128_GCM_SHA256);
+      _case_printf(TLS_AES_256_GCM_SHA384);
+      _case_printf(TLS_CHACHA20_POLY1305_SHA256);
+      #endif  /* SHARKSSL_TLS_1_3 */
+      #if SHARKSSL_TLS_1_2
       _case_printf(TLS_DHE_RSA_WITH_AES_128_GCM_SHA256);
       _case_printf(TLS_DHE_RSA_WITH_AES_256_GCM_SHA384);
       _case_printf(TLS_DHE_RSA_WITH_CHACHA20_POLY1305_SHA256);
@@ -91,6 +97,7 @@ void printCiphersuite(U16 cipherSuite)
       _case_printf(TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256);
       _case_printf(TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384);
       _case_printf(TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256);
+      #endif  /* SHARKSSL_TLS_1_2 */
    default:
       xprintf(("ERROR: UNKNOWN"));
       break;
@@ -102,11 +109,29 @@ void printCiphersuite(U16 cipherSuite)
 /* Called when SSL Handshake is complete
  */
 static void
-printCertInfo(SharkSslCon *s)
+printProtocolInfo(SharkSslCon *s)
 {
    if(traceDisabled) return;
    xprintf(("handshake complete"));
-   xprintf(("\nnegotiated protocol: TLS 1.2"));
+   xprintf(("\nnegotiated protocol: "));
+   switch (SharkSslCon_getProtocol(s))
+   {
+   #if SHARKSSL_TLS_1_2
+   case SHARKSSL_PROTOCOL_TLS_1_2:
+      xprintf(("TLS 1.2"));
+      break;
+   #endif
+
+   #if SHARKSSL_TLS_1_3
+   case SHARKSSL_PROTOCOL_TLS_1_3:
+      xprintf(("TLS 1.3"));
+      break;
+   #endif
+
+   default:
+      xprintf(("ERROR: UNKNOWN"));
+      break;
+   }
    xprintf(("\nnegotiated ciphersuite: "));
    printCiphersuite(SharkSslCon_getCiphersuite(s));
    xprintf(("\n"));
@@ -259,9 +284,12 @@ seSec_readOrHandshake(
 {
    SharkSslCon_RetVal retVal;
    int nb, readLen = 0;
-#if SHARKSSL_ENABLE_CLONE_CERTINFO == 0
+   #if SHARKSSL_ENABLE_CLONE_CERTINFO == 0
    SharkSslConTrust trust = SharkSslConTrust_NotSSL;
-#endif
+   #endif
+   #if SHARKSSL_ENABLE_CA_LIST == 0
+   (void)commonName;
+   #endif
    for (;;)
    {
       switch (retVal = SharkSslCon_decrypt(s, (U16)readLen))
@@ -280,6 +308,7 @@ seSec_readOrHandshake(
 #if SHARKSSL_ENABLE_CLONE_CERTINFO == 0
          case SharkSslCon_Certificate:
             trust = getCertTrustInfo(s,commonName);
+            printCertInfo(s);
          /* Fall through to SharkSslCon_Handshake */
 #endif
          case SharkSslCon_Handshake:
@@ -292,14 +321,14 @@ seSec_readOrHandshake(
             }
 
             /* Second: check if handshake is complete - if so, get
-             * certificate */
+               certificate */
             if (SharkSslCon_isHandshakeComplete(s))
             {
-               printCertInfo(s);
                if (buf == NULL)  /* seSec_handshake */
                {
+                  printProtocolInfo(s);
 #if SHARKSSL_ENABLE_CLONE_CERTINFO
-                  return getCertTrustInfo(s,commonName);
+                  return getCertTrustInfo(s, commonName);
 #else
                   return (int)trust;
 #endif

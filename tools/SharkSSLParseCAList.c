@@ -10,7 +10,7 @@
  ****************************************************************************
  *   PROGRAM MODULE
  *
- *   $Id: SharkSSLParseCAList.c 3413 2014-06-25 20:43:20Z wini $
+ *   $Id: SharkSSLParseCAList.c 5006 2022-01-07 19:54:12Z gianluca $
  *
  *   COPYRIGHT:  Real Time Logic LLC, 2010
  *
@@ -58,7 +58,7 @@ static int SharkSslCertStore_assemble_2(SharkSslCertStore *o, unsigned char **ou
    unsigned char *p;
 
    /* determine total vector size */
-   list_off = (4 + o->elements * (SHARKSSL_CA_LIST_NAME_SIZE + SHARKSSL_CA_LIST_PTR_SIZE));
+   list_off = 4 + (o->elements * SHARKSSL_CA_LIST_ELEMENT_SIZE);
    tot_cert_size = list_off;
    DoubleListEnumerator_constructor(&iter, &o->certList);
    for (cert = (SharkSslCSCert*)DoubleListEnumerator_getElement(&iter); cert;
@@ -110,7 +110,7 @@ int main(int argc, char **argv)
 
    initVars();
    (void)errorString;  /* warning removal */
-   printRev("$Id: SharkSSLParseCAList.c 3413 2014-06-25 20:43:20Z wini $");
+   printRev("$Id: SharkSSLParseCAList.c 5006 2022-01-07 19:54:12Z gianluca $");
 
    if (argc < 2)
    {

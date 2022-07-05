@@ -10,9 +10,9 @@
  ****************************************************************************
  *   PROGRAM MODULE
  *
- *   $Id: selib.h 4871 2021-10-14 18:42:00Z wini $
+ *   $Id: selib.h 5124 2022-04-21 14:02:33Z wini $
  *
- *   COPYRIGHT:  Real Time Logic LLC, 2013 - 2020
+ *   COPYRIGHT:  Real Time Logic LLC, 2013 - 2022
  *
  *   This software is copyrighted by and is the sole property of Real
  *   Time Logic LLC.  All rights, title, ownership, or other interests in
@@ -58,7 +58,7 @@ The SharkSSL Socket Example Lib (selib.h/selib.c) is a basic module
 that wraps the transport agnostic SharkSSL functions for encoding and
 decoding into functions that interface to TCP/IP socket calls.
 
-![Socket Example Lib](@ref SharkSSL-selib.jpg)
+![Socket Example Lib](@ref SharkSSL-selib.svg)
 
 In addition, the file selib.c includes wrappers for standard BSD
 socket calls at the end of the file. TCP/IP stacks not using the BSD

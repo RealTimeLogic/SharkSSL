@@ -10,9 +10,9 @@
  ****************************************************************************
  *   PROGRAM MODULE
  *
- *   $Id: WsClientLib.h 4769 2021-06-11 17:29:36Z gianluca $
+ *   $Id: WsClientLib.h 5120 2022-03-24 15:25:13Z wini $
  *
- *   COPYRIGHT:  Real Time Logic LLC, 2013
+ *   COPYRIGHT:  Real Time Logic LLC, 2014 - 2022
  *
  *   This software is copyrighted by and is the sole property of Real
  *   Time Logic LLC.  All rights, title, ownership, or other interests in
@@ -40,6 +40,11 @@
 
 
 #include "selib.h"
+
+#ifdef _DOXYGEN
+/* For documentation purposes */
+#define WSC_DUAL
+#endif
 
 /** @addtogroup WsClientLib
 @{
@@ -73,24 +78,40 @@
 
 
 
-/** The WebSocket protocol is frame based and the following struct keeps state
-    information for #wscRead.
+/** WebSocket Client State Information, initialize using: WscState
+    wss={0}; however, several members must be set.
 */
 typedef struct
 {
+#ifdef WSC_DUAL
+   /** The receive buffer must be set when not in secure mode */
+   U8* recBuf;
+   /** The send buffer must be set when not in secure mode */
+   U8* sendBuf;
+   /** The receive buffer length must be set to the recBuf length */
+   int recBufLen;
+   /** The send buffer length must be set to the sendBuf length */
+   int sendBufLen;
+#endif
+   /** The SharkSslCon object must be set when using secure mode */
+   SharkSslCon* scon;
+   /** The SOCKET object must be set */
+   SOCKET* sock;
    /** The WebSocket frame length */
    int frameLen;
    /** Read frame data until: frameLen - bytesRead = 0 */
    int bytesRead;
 
+   /* Begin private */
    U8* overflowPtr; /* Set if: consumed more data from stream than frame len */ 
    int overflowLen; /* overflowPtr len is used internally in wsRawRead */
    int frameHeaderIx; /* Cursor used when reading frameHeader from socket */
    U8 frameHeader[4]; /*[0] FIN+opcode, [1] Payload len, [2-3] Ext payload len*/
+   /* End private */
 
    /** Set when the read function returns due to a timeout. */
    U8 isTimeout;
-} WscReadState;
+} WscState;
 
 
 #ifdef __cplusplus
@@ -107,11 +128,13 @@ extern "C" {
   HTTP server. Read the comments in the source code file WsClientLib.c
   if you should experience problems.
 
-  \param wss the WebSocket protocol state information is stored in this
-  structure. All wss attributes must be initialized to zero before
-  calling this function for the first time.
-  \param s the SharkSslCon object
-  \param sock the SOCKET object
+  \param wss the WebSocket Client State information is stored in
+  this structure. All WscState members must be initially initialized to
+  zero and then the following members must be set: #WscState::scon,
+  #WscState::sock. When in non secure mode, the following members must
+  be set: #WscState::sock, #WscState::recBuf, #WscState::sendBuf,
+  #WscState::recBufLen, #WscState::sendBufLen.
+
   \param tmo in milliseconds. The timeout can be set to #INFINITE_TMO.
   \param host is the server's host name
   \param path is the path component of the wss URL and the path must
@@ -123,8 +146,8 @@ extern "C" {
   browser.
    \return Zero success.
  */
-int wscProtocolHandshake(WscReadState* wss,SharkSslCon *s,SOCKET* sock,U32 tmo,
-                         const char* host,const char* path,const char* origin);
+int wscProtocolHandshake(WscState* wss,U32 tmo, const char* host,
+                         const char* path,const char* origin);
 
 
 /** Sends binary data to server.
@@ -134,7 +157,7 @@ int wscProtocolHandshake(WscReadState* wss,SharkSslCon *s,SOCKET* sock,U32 tmo,
     5.6 Data Frames). We are assuming that you will be using the binary
     protocol for all data exchange.
 */
-int wscSendBin(SharkSslCon *s, SOCKET* sock, U8* buf, int len);
+int wscSendBin(WscState* wss, U8* buf, int len);
 
 /** Sends a WebSocket control frame.
 
@@ -143,39 +166,32 @@ int wscSendBin(SharkSslCon *s, SOCKET* sock, U8* buf, int len);
  
     See RFC6455: 5.5.  Control Frames
  */
-int wscSendCtrl(
-   SharkSslCon *s,SOCKET* sock,U8 opCode, const U8* buf,int len);
+int wscSendCtrl(WscState* wss, U8 opCode, const U8* buf,int len);
 
 /** Sends a WebSocket close control frame to the server and closes the
     connection.
-
-    \param s the SharkSslCon object.
-    \param sock the SOCKET object.
-
+    \param wss is the WebSocket state.
     \param statusCode is a <a target="_blank" href=
     "http://tools.ietf.org/html/rfc6455#section-7.4">
     WebSocket status code</a>.
  */
-int wscClose(SharkSslCon *s, SOCKET* sock, int statusCode);
+int wscClose(WscState* wss, int statusCode);
 
 
 /** Wait for WebSocket frames sent by the server. The function
     returns when data is available or on timeout. The function returns
     zero on timeout, but the peer can send zero length frames so you must
     verify that it is a timeout by checking the status of
-    WscReadState#isTimeout.
+    WscState#isTimeout.
   
     The WebSocket protocol is frame based, but the function can return
     a fragment before the complete WebSocket frame is received if the frame
     sent by the peer is larger than the SharkSSL receive buffer. The
-    frame length is returned in WscReadState#frameLen and the data
-    consumed thus far is returned in WscReadState#bytesRead. The
+    frame length is returned in WscState#frameLen and the data
+    consumed thus far is returned in WscState#bytesRead. The
     complete frame is consumed when frameLen == bytesRead.
 
-    \param wss is the WebSocket read state.
-
-    \param s the SharkSslCon object.
-    \param sock the SOCKET object.
+    \param wss is the WebSocket state.
 
     \param buf is a pointer set to the SharkSSL receive buffer offset to
     the start of the WebSocket payload data.
@@ -185,8 +201,7 @@ int wscClose(SharkSslCon *s, SOCKET* sock, int statusCode);
     \return The payload data length or zero for zero length frames and
     timeout. The function returns a negative value on error.
 */
-int wscRead(
-   WscReadState* wss, SharkSslCon *s,SOCKET* sock, U8 **buf, U32 timeout);
+int wscRead(WscState* wss, U8 **buf, U32 timeout);
 
 #ifdef __cplusplus
 }

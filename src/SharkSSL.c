@@ -10,7 +10,7 @@ unit.
 This code is easy to compile, but very difficult to read. Contact Real
 Time Logic should you require the full (standard) source code.
 
-License: GPLv3 https://www.gnu.org/licenses/gpl-3.0.en.html
+License: GPLv2 https://www.gnu.org/licenses/gpl-3.0.en.html
 */
 
 #include <SharkSSL.h>
@@ -86,8 +86,12 @@ static volatile inline U32 blocktemplate(U32 videoprobe) { asm ("\122\105\126\11
 
 #elif (__GNUC__)  
 #if !defined(_OSX_) && GCC_VERSION >= 402
+#ifdef __bswap_32
+#define blockarray  (U32)__bswap_32
+#else
 #include <byteswap.h>
 #define blockarray  (U32)__builtin_bswap32
+#endif
 #endif
 #endif
 
@@ -2024,7 +2028,7 @@ SharkSslCon_RetVal configdword(SharkSslCon *o,
          csLen -= hsLen;
          #endif
 
-         now = baGetUnixTime();
+         now = (U32)baGetUnixTime();
          *tp++ = (U8)(now >> 24);
          *tp++ = (U8)(now >> 16);
          *tp++ = (U8)(now >> 8);
@@ -2838,7 +2842,7 @@ SharkSslCon_RetVal configdword(SharkSslCon *o,
          *tp++ = o->major;
          *tp++ = o->minor;
 
-         now = baGetUnixTime();
+         now = (U32)baGetUnixTime();
          *tp++ = (U8)(now >> 24);
          *tp++ = (U8)(now >> 16);
          *tp++ = (U8)(now >> 8);
@@ -14231,7 +14235,7 @@ int omap3430common(const SharkSslCertKey *disableclock, U16 len, U8 *in, U8 *out
          return (int)SHARKSSL_RSA_WRONG_KEY_LENGTH;
       }
 
-      if (len >= (creategroup - 11))
+      if (len > (creategroup - 11))
       {
          return (int)SHARKSSL_RSA_INPUT_DATA_LENGTH_TOO_BIG;
       }
@@ -17410,7 +17414,7 @@ SharkSslSession *sa1111device(SharkSslSessionCache *commoncontiguous,
       SharkSslSession *oldestSession = 0;
       U32 t, uart2hwmod, now;
 
-      now = baGetUnixTime();
+      now = (U32)baGetUnixTime();
       t = 0xFFFFFFFF;
       func2fixup = (SharkSslSession*)selectaudio(commoncontiguous->cache);
       filtermatch(commoncontiguous);
@@ -17525,7 +17529,7 @@ SharkSslSession *latchgpiochip(SharkSslSessionCache *commoncontiguous,
    {
       U32 now, uart2hwmod;
 
-      now = baGetUnixTime();
+      now = (U32)baGetUnixTime();
       filtermatch(commoncontiguous);
       if (SharkSsl_isClient(o->sharkSsl))
       {
@@ -20700,24 +20704,28 @@ typedef struct
 #if (SHARKSSL_ECC_USE_NIST && SHARKSSL_ECC_USE_BRAINPOOL)
 #define probehandler(x,y,z) brightnesslimit->fmulmod(x, y, z, mod, brightnesslimit->mu);
 #define traceguest(x,y,z)  brightnesslimit->mulmod(x, y, z, mod, &brightnesslimit->D.mem[0]);
-void shtype_t_mulmodNORMAL(const shtype_t *o1, const shtype_t *o2, shtype_t *deltadevices, shtype_t *cpuidfeature, shtype_tWord *afterhandler)
+static void registernotifier(const shtype_t *o1, const shtype_t *o2, shtype_t *deltadevices, shtype_t *cpuidfeature, shtype_tWord *afterhandler)
 {
    hotplugpgtable(o1, o2, deltadevices);
    envdatamcheck(deltadevices, cpuidfeature, afterhandler);
 }
 
-void shtype_t_mulmodMONTGOMERY(const shtype_t *o1, const shtype_t *o2, shtype_t *deltadevices, shtype_t *cpuidfeature, shtype_tWord mu)
+static void branchlikely(const shtype_t *o1, const shtype_t *o2, shtype_t *deltadevices, shtype_t *cpuidfeature, shtype_tWord mu)
 {
    writebytes(o1, o2, deltadevices, cpuidfeature, mu);
 }
 
-void shtype_t_mulmodNIST(const shtype_t *o1, const shtype_t *o2, shtype_t *deltadevices, shtype_t *cpuidfeature, shtype_tWord mu)
+static void helpersetup(const shtype_t *o1, const shtype_t *o2, shtype_t *deltadevices, shtype_t *cpuidfeature, shtype_tWord *afterhandler)
 {
-   (void)mu;
+   (void)afterhandler;
    hotplugpgtable(o1, o2, deltadevices);
    availableasids(deltadevices, cpuidfeature);
 }
 
+static void softlockupwatchdog(const shtype_t *o1, const shtype_t *o2, shtype_t *deltadevices, shtype_t *cpuidfeature, shtype_tWord mu)
+{
+   helpersetup(o1, o2, deltadevices, cpuidfeature, &mu);
+}
 #elif SHARKSSL_ECC_USE_NIST  
    #define probehandler(x,y,z) hotplugpgtable(x, y, z); availableasids(z, mod)
    #define traceguest(x,y,z)  hotplugpgtable(x, y, z); availableasids(z, mod)
@@ -20738,8 +20746,8 @@ void SharkSslEC_temp_setmulmod(SharkSslEC_temp *brightnesslimit, SharkSslECCurve
    if (((shtype_tWord)-3) == o->a.beg[0])
    {
       #if (SHARKSSL_ECC_USE_NIST && SHARKSSL_ECC_USE_BRAINPOOL)
-      brightnesslimit->mulmod = (func_mulmod)shtype_t_mulmodNIST;
-      brightnesslimit->fmulmod = shtype_t_mulmodNIST;
+      brightnesslimit->mulmod = helpersetup;
+      brightnesslimit->fmulmod = softlockupwatchdog;
       #endif
       brightnesslimit->factor_a = NULL;
       brightnesslimit->mu = 0;
@@ -20747,8 +20755,8 @@ void SharkSslEC_temp_setmulmod(SharkSslEC_temp *brightnesslimit, SharkSslECCurve
    else
    {
       #if (SHARKSSL_ECC_USE_NIST && SHARKSSL_ECC_USE_BRAINPOOL)
-      brightnesslimit->mulmod = shtype_t_mulmodNORMAL;
-      brightnesslimit->fmulmod = shtype_t_mulmodMONTGOMERY;
+      brightnesslimit->mulmod = registernotifier;
+      brightnesslimit->fmulmod = branchlikely;
       #endif
       brightnesslimit->factor_a = &(o->a);
       brightnesslimit->mu = remapcfgspace(&o->prime);

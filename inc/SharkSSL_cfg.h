@@ -10,9 +10,9 @@
  ****************************************************************************
  *   PROGRAM MODULE
  *
- *   $Id: SharkSSL_cfg.h 4915 2021-12-01 18:26:55Z wini $
+ *   $Id: SharkSSL_cfg.h 5194 2022-06-29 06:39:42Z gianluca $
  *
- *   COPYRIGHT:  Real Time Logic LLC, 2010 - 2021
+ *   COPYRIGHT:  Real Time Logic LLC, 2010 - 2022
  *
  *   This software is copyrighted by and is the sole property of Real
  *   Time Logic LLC.  All rights, title, ownership, or other interests in
@@ -46,6 +46,13 @@
 /** @addtogroup SharkSslCfg
 @{
 */
+
+/** TLS 1.2 always enabled - forward compatibility to dual 1.2/1.3 stack 
+ *  (needed for selib.c)
+ */
+#undef  SHARKSSL_TLS_1_2
+#define SHARKSSL_TLS_1_2                                 1
+
 
 /** Enable/disable AES 256
  */
@@ -591,6 +598,9 @@
     and timeTo >= now
     This setting requires baGetUnixTime() returning the correct time.
 */
+#ifdef __DOXYGEN__
+#define SHARKSSL_CHECK_DATE                               0
+#endif
 #ifndef SHARKSSL_CHECK_DATE
 #ifdef SHARKSSL_BA /* if SharkSSL embedded in BAS */
 #define SHARKSSL_CHECK_DATE                               1
