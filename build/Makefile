@@ -80,7 +80,6 @@ $(LIBNAME): $(OBJS)
 ##################  TOOLS
 .PHONY : tools clean JSONEX
 tools: obj \
-	SharkSSLParseCAList$(EXT) \
 	SharkSSLParseCert$(EXT) SharkSSLParseKey$(EXT)
 
 SharkSSLParseCAList$(EXT): $(ODIR)/SharkSSLParseCAList$(O)
@@ -114,9 +113,12 @@ WsEchoClient$(EXT): $(ODIR)/WsEchoClient$(O) $(ODIR)/WsClientLib$(O) \
 	$(ODIR)/selib$(O)
 	$(CC) $(LNKOFT)$@ $^ $(LIBNAME) $(EXTRALIBS)
 
-smtp$(EXT): $(ODIR)/BufPrint$(O) $(ODIR)/SMTP-example$(O) $(ODIR)/SMTP$(O) \
-	$(ODIR)/selib$(O)
-	$(CC) $(LNKOFT)$@ $^ $(LIBNAME) $(EXTRALIBS)
+#smtp$(EXT): $(ODIR)/BufPrint$(O) $(ODIR)/SMTP-example$(O) $(ODIR)/SMTP$(O) \
+#	$(ODIR)/selib$(O)
+#	$(CC) $(LNKOFT)$@ $^ $(LIBNAME) $(EXTRALIBS)
+smtp$(EXT):
+	@echo "SMTP example disabled; see makefile for details"
+
 
 SharkTrust$(EXT): $(ODIR)/SharkTrust$(O) $(ODIR)/MSLib$(O) \
 	$(ODIR)/selib$(O)
