@@ -10,9 +10,9 @@
  ****************************************************************************
  *   PROGRAM MODULE
  *
- *   $Id: SharkSSLTools.h 4960 2021-12-15 01:17:08Z wini $
+ *   $Id: SharkSSLTools.h 5390 2023-02-21 00:59:31Z wini $
  *
- *   COPYRIGHT:  Real Time Logic LLC, 2010 - 2021
+ *   COPYRIGHT:  Real Time Logic LLC, 2010 - 2023
  *
  *   This software is copyrighted by and is the sole property of Real
  *   Time Logic LLC.  All rights, title, ownership, or other interests in
@@ -34,6 +34,21 @@
  ****************************************************************************
  *
  */
+
+/* Required if built by Real Time Logic's release script */
+#ifdef BA_RELEASE
+#include <ThreadLib.h>
+#undef Thread_ce
+#undef ThreadMutex_constructor
+#undef ThreadMutex_destructor
+#undef ThreadMutex_set
+#undef ThreadMutex_release
+#define Thread_ce(x)
+#define ThreadMutex_constructor(x)
+#define ThreadMutex_destructor(x)
+#define ThreadMutex_set(x)
+#define ThreadMutex_release(x)
+#endif
 
 
 /**

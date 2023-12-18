@@ -10,7 +10,7 @@
  ****************************************************************************
  *   PROGRAM MODULE
  *
- *   $Id: selib.c 5154 2022-05-15 22:45:13Z gianluca $
+ *   $Id: selib.c 5414 2023-03-27 05:34:37Z gianluca $
  *
  *   COPYRIGHT:  Real Time Logic LLC, 2013 - 2022
  *
@@ -116,21 +116,21 @@ printProtocolInfo(SharkSslCon *s)
    xprintf(("\nnegotiated protocol: "));
    switch (SharkSslCon_getProtocol(s))
    {
-   #if SHARKSSL_TLS_1_2
-   case SHARKSSL_PROTOCOL_TLS_1_2:
-      xprintf(("TLS 1.2"));
-      break;
-   #endif
+      #if SHARKSSL_TLS_1_2
+      case SHARKSSL_PROTOCOL_TLS_1_2:
+         xprintf(("TLS 1.2"));
+         break;
+      #endif
 
-   #if SHARKSSL_TLS_1_3
-   case SHARKSSL_PROTOCOL_TLS_1_3:
-      xprintf(("TLS 1.3"));
-      break;
-   #endif
+      #if SHARKSSL_TLS_1_3
+      case SHARKSSL_PROTOCOL_TLS_1_3:
+         xprintf(("TLS 1.3"));
+         break;
+      #endif
 
-   default:
-      xprintf(("ERROR: UNKNOWN"));
-      break;
+      default:
+         xprintf(("ERROR: UNKNOWN"));
+         break;
    }
    xprintf(("\nnegotiated ciphersuite: "));
    printCiphersuite(SharkSslCon_getCiphersuite(s));
@@ -138,6 +138,7 @@ printProtocolInfo(SharkSslCon *s)
 }
 #else
 #define printCertInfo(notused)
+#define printProtocolInfo(notused)
 #endif
 
 
@@ -284,9 +285,6 @@ seSec_readOrHandshake(
 {
    SharkSslCon_RetVal retVal;
    int nb, readLen = 0;
-   #if SHARKSSL_ENABLE_CLONE_CERTINFO == 0
-   SharkSslConTrust trust = SharkSslConTrust_NotSSL;
-   #endif
    #if SHARKSSL_ENABLE_CA_LIST == 0
    (void)commonName;
    #endif
@@ -299,39 +297,48 @@ seSec_readOrHandshake(
                               SharkSslCon_getBufLen(s), timeout);
             if (readLen <= 0)
                return readLen; /* 0 (no data) or -1 (socket error) */
-            if (buf == NULL)  /* seSec_handshake */
+            if (NULL == buf)  /* seSec_handshake */
             {
                NTD xprintf(("received %d handshake bytes\n", readLen));
             }
             break; /* decrypt next record */
 
-#if SHARKSSL_ENABLE_CLONE_CERTINFO == 0
-         case SharkSslCon_Certificate:
-            trust = getCertTrustInfo(s,commonName);
-            printCertInfo(s);
-         /* Fall through to SharkSslCon_Handshake */
-#endif
          case SharkSslCon_Handshake:
             /* First: send pending data if any */
             if ((nb = SharkSslCon_getHandshakeDataLen(s)) != 0)
             {
-               if(nb != se_send(sock,(void*)SharkSslCon_getHandshakeData(s),nb))
+               #if 1
+               int sentbytes = se_send(sock, (void *)SharkSslCon_getHandshakeData(s), nb);
+               #else  /* test */
+               int sentbytes = se_send(sock, (void *)SharkSslCon_getHandshakeData(s), (nb > 10 ? (nb >> 1) : nb));
+               #endif
+               if (sentbytes < 0)
+               {
                   return -1;
-               NTD xprintf(("sent %d handshake bytes\n", nb));
+               }
+               else if (sentbytes < nb)  /* HS buffer partially sent */
+               {
+                  /* new API function */
+                  SharkSslCon_setHandshakeDataSent(s, (U16)sentbytes);
+                  NTD xprintf(("sent %d/%d handshake bytes\n", sentbytes, nb));
+               }
+               else
+               {
+                  NTD xprintf(("sent %d handshake bytes\n", sentbytes));
+               }
             }
 
-            /* Second: check if handshake is complete - if so, get
-               certificate */
-            if (SharkSslCon_isHandshakeComplete(s))
+            /** 
+             * Second: check if handshake is complete - if so, get certificate 
+			    * unless there are session tickets pending; in such case, process
+			    * first the tickets, then return the certificate
+			    */
+            if ((nb = SharkSslCon_isHandshakeComplete(s)) != 0)
             {
-               if (buf == NULL)  /* seSec_handshake */
+               if ((NULL == buf) && (1 == nb))  /* seSec_handshake */
                {
                   printProtocolInfo(s);
-#if SHARKSSL_ENABLE_CLONE_CERTINFO
                   return getCertTrustInfo(s, commonName);
-#else
-                  return (int)trust;
-#endif
                }
             }
             readLen = 0;

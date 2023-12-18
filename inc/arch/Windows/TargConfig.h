@@ -10,9 +10,9 @@
  ****************************************************************************
  *   PROGRAM MODULE
  *
- *   $Id: TargConfig.h 4893 2021-11-05 22:54:26Z wini $
+ *   $Id: TargConfig.h 5163 2022-05-21 12:08:39Z gianluca $
  *
- *   COPYRIGHT:  Real Time Logic LLC, 2010 - 2021
+ *   COPYRIGHT:  Real Time Logic LLC, 2010 - 2022
  *
  *   This software is copyrighted by and is the sole property of Real
  *   Time Logic LLC.  All rights, title, ownership, or other interests in
@@ -41,19 +41,11 @@
 #define WIN32_LEAN_AND_MEAN 1
 #endif
 
-#ifdef __TINYC__
-#define mktime mktimeNotUsed
-#include <time.h>
-#undef mktime
-#define mktime _mktime64
-#define BaTime long long
-#endif
-
 /**
- *  baMalloc  should return 32-bit aligned addresses when succesful,
- *                          (void*)0 when not succesful.
- *  baRealloc should return 32-bit aligned addresses when succesful,
- *                          (void*)0 when not succesful or NOT available.
+ *  baMalloc  should return 32-bit aligned addresses when successful,
+ *                          NULL when not successful.
+ *  baRealloc should return 32-bit aligned addresses when successful,
+ *                          NULL when not successful or NOT available.
  */
 
 #ifndef NDEBUG
@@ -133,5 +125,6 @@ typedef struct ThreadMutexBase
 #ifndef FALSE
 #define FALSE 0
 #endif
+
 
 #endif  /* _SharkSsl_TargConfig_h */

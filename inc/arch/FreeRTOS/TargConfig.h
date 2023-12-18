@@ -10,9 +10,9 @@
  ****************************************************************************
  *   PROGRAM MODULE
  *
- *   $Id: TargConfig.h 4963 2021-12-17 00:32:59Z wini $
+ *   $Id: TargConfig.h 5466 2023-07-12 14:04:42Z wini $
  *
- *   COPYRIGHT:  Real Time Logic LLC, 2015 - 2021
+ *   COPYRIGHT:  Real Time Logic LLC, 2015 - 2023
  *
  *   This software is copyrighted by and is the sole property of Real
  *   Time Logic LLC.  All rights, title, ownership, or other interests in
@@ -49,7 +49,6 @@
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
 #include <freertos/semphr.h>
-#include <freertos/timers.h>
 #else
 #include <FreeRTOS.h>
 #include <task.h>
@@ -131,11 +130,7 @@ typedef signed   long long S64;
 typedef U8 BaBool;
 
 
-#ifdef ESP_PLATFORM
-#define baGetUnixTime() ((U32)time(0))
-#else
 #define baGetUnixTime()    (U32)(((U64)xTaskGetTickCount() * (U64)portTICK_PERIOD_MS) / 1000)
-#endif
 
 #if !configUSE_MUTEXES
 #error Set configUSE_MUTEXES in FreeRTOS.h

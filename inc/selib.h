@@ -10,7 +10,7 @@
  ****************************************************************************
  *   PROGRAM MODULE
  *
- *   $Id: selib.h 5124 2022-04-21 14:02:33Z wini $
+ *   $Id: selib.h 5209 2022-07-31 18:06:02Z gianluca $
  *
  *   COPYRIGHT:  Real Time Logic LLC, 2013 - 2022
  *
@@ -136,8 +136,7 @@ void printCiphersuite(U16 cipherSuite);
    The function also validates the server's certificate and compares
    the commonName provided in argument 3 with the common name in the
    certificate, if commonName is provided (not NULL). The domain name
-   comparison works with and without the clone certificate API
-   (#SHARKSSL_ENABLE_CLONE_CERTINFO).
+   comparison works with the clone certificate API.   
 
    <b>Note:</b> the function only performs basic certificate domain
    name comparison and can only be used with server certificates that

@@ -10,9 +10,9 @@
  ****************************************************************************
  *   PROGRAM MODULE
  *
- *   $Id: RayCrypto-ECDSA.c 4769 2021-06-11 17:29:36Z gianluca $
+ *   $Id: RayCrypto-ECDSA.c 5481 2023-10-08 21:31:49Z wini $
  *
-*   COPYRIGHT:  Real Time Logic LLC, 2015
+*   COPYRIGHT:  Real Time Logic LLC, 2015 - 2023
  *
  *   This software is copyrighted by and is the sole property of Real
  *   Time Logic LLC.  All rights, title, ownership, or other interests in
@@ -35,6 +35,7 @@
  *
  */
 #define _SHARKSSL_C_         /* standalone RayCrypto ECDSA library */
+#include "selib.h"
 #include "SharkSslCrypto.h"  /* SharkSSL.h included by SharkSslCrypto.h */
 
 /*
@@ -316,15 +317,11 @@ static void ECDSA_test(const char *privKey, const char *pubKey, U8 *sha256digest
 }
 #endif
 
-
-int main(int argc, char **argv)
+void mainTask(SeCtx* ctx)
 {
    SharkSslSha256Ctx sha256ctx;
    U8 sha256digest[SHARKSSL_SHA256_HASH_LEN];
-
-   (void)argv;
-   (void)argc;
-
+   (void)ctx;
    printf("SharkSSL ECDSA demo running...\n\n");
    #if (!SHARKSSL_ECDSA_ONLY_VERIFY)
    sharkssl_entropy(0x12345678);  /* can be not available if only ECDSA verification compiled */
@@ -373,5 +370,12 @@ int main(int argc, char **argv)
    #endif  /* SHARKSSL_ECC_USE_SECP521R1 */
 
    printf("SharkSSL ECDSA demo complete.\n\n");
+}
+
+#if  HOST_PLATFORM == 1
+int main()
+{
+   mainTask(0);
    return 0;
 }
+#endif

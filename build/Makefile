@@ -80,6 +80,7 @@ $(LIBNAME): $(OBJS)
 ##################  TOOLS
 .PHONY : tools clean JSONEX
 tools: obj \
+	SharkSSLParseCAList$(EXT) \
 	SharkSSLParseCert$(EXT) SharkSSLParseKey$(EXT)
 
 SharkSSLParseCAList$(EXT): $(ODIR)/SharkSSLParseCAList$(O)

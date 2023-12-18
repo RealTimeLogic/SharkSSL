@@ -10,9 +10,9 @@
  ****************************************************************************
  *            HEADER
  *
- *   $Id: BufPrint.h 5029 2022-01-16 21:32:09Z wini $
+ *   $Id: BufPrint.h 5387 2023-02-20 22:50:13Z wini $
  *
- *   COPYRIGHT:  Real Time Logic LLC, 2008 - 2022
+ *   COPYRIGHT:  Real Time Logic LLC, 2008 - 2023
  *
  *   This software is copyrighted by and is the sole property of Real
  *   Time Logic LLC.  All rights, title, ownership, or other interests in
@@ -155,7 +155,7 @@ typedef struct BufPrint
       /** The printf function's format is identical to the standard
           ANSI vprintf function. See BufPrint::printf for the format flags.
           \param fmt See vprintf in the
-<a href="http://www.infosys.utas.edu.au/info/documentation/C/CStdLib.html#stdio.h">
+<a href="../clib.html#stdio.h">
           C Standard Library</a> for more information.
           \param argList See vprintf in the C Standard Library for
           more information.
@@ -171,7 +171,7 @@ typedef struct BufPrint
           BufPrint::jsonString
 
           \param fmt See vprintf in the
-          <a href="../../../StdC/CStdLib.html#stdio.h">
+          <a href="../clib.html#stdio.h">
           C Standard Library</a> for more information.
        */
       int printf(const char* fmt, ...);
@@ -224,7 +224,7 @@ typedef struct BufPrint
 
       /** Encode binary data as Base64url.
           \sa baB64Decode
-          \param data binary data or string to be encoded as B64.
+          \param source binary data or string to be encoded as B64.
           \param slen the data size.
           \param padding add padding characters.
       */
@@ -304,8 +304,8 @@ inline int BufPrint::printf(const char* fmt, ...) {
 }
 inline char* BufPrint::getBuf() {
    return BufPrint_getBuf(this); }
-inline void BufPrint::setBuf(char* buf, int size) {
-   BufPrint_setBuf(this, buf, size); }
+inline void BufPrint::setBuf(char* buffer, int size) {
+   BufPrint_setBuf(this, buffer, size); }
 inline U32 BufPrint::getBufSize() {
    return BufPrint_getBufSize(this); }
 inline void BufPrint::erase() {

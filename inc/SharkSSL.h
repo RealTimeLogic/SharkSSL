@@ -10,9 +10,9 @@
  ****************************************************************************
  *   PROGRAM MODULE
  *
- *   $Id: SharkSSL.h 5131 2022-04-26 20:10:40Z gianluca $
+ *   $Id: SharkSSL.h 5494 2023-11-22 20:08:21Z gianluca $
  *
- *   COPYRIGHT:  Real Time Logic LLC, 2010 - 2021
+ *   COPYRIGHT:  Real Time Logic LLC, 2010 - 2022
  *
  *   This software is copyrighted by and is the sole property of Real
  *   Time Logic LLC.  All rights, title, ownership, or other interests in
@@ -40,7 +40,10 @@
 
 #include "TargConfig.h"      /* platform dependencies  */
 
-/* Above TargConfig.h for BAS defines SHARKSSL_API, but not Shark's version */
+#ifndef SHARKDBG_PRINTF
+#define SHARKDBG_PRINTF(a,b,c)
+#endif
+
 #ifndef SHARKSSL_API
 #define SHARKSSL_API
 #else  /* Barracuda */
@@ -188,6 +191,15 @@ when the peer fails to process the data.
 SharkSslCon_getCiphersuite.
 */
 
+#if SHARKSSL_TLS_1_3
+/** TLS_AES_128_GCM_SHA256 */
+#define TLS_AES_128_GCM_SHA256                              0x1301
+/** TLS_AES_256_GCM_SHA384 */
+#define TLS_AES_256_GCM_SHA384                              0x1302
+/** TLS_CHACHA20_POLY1305_SHA256 */
+#define TLS_CHACHA20_POLY1305_SHA256                        0x1303
+#endif
+#if SHARKSSL_TLS_1_2
 /** TLS_DHE_RSA_WITH_AES_128_GCM_SHA256 */
 #define TLS_DHE_RSA_WITH_AES_128_GCM_SHA256                 0x009E
 /** TLS_DHE_RSA_WITH_AES_256_GCM_SHA384 */
@@ -206,6 +218,7 @@ SharkSslCon_getCiphersuite.
 #define TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256       0xCCA9
 /** TLS_DHE_RSA_WITH_CHACHA20_POLY1305_SHA256 */
 #define TLS_DHE_RSA_WITH_CHACHA20_POLY1305_SHA256           0xCCAA
+#endif
 
 /** @} */ /* end group SharkSslCiphers */ 
 
@@ -213,13 +226,19 @@ SharkSslCon_getCiphersuite.
 /** \defgroup SharkSslProtocol SSL and TLS protocol version
 \ingroup SharkSslInfoAndCodes
 @{
- \brief SharkSSL supports TLS 1.2.
+ \brief Return values from function #SharkSslCon_getProtocol.
 */
 
 /** SHARKSSL_PROTOCOL_UNKNOWN */
 #define SHARKSSL_PROTOCOL_UNKNOWN                  0x00
 /** SHARKSSL_PROTOCOL_TLS_1_2 */
-#define SHARKSSL_PROTOCOL_TLS_1_2                  0x03
+#define SHARKSSL_PROTOCOL_TLS_1_2                  0x33
+/** SHARKSSL_PROTOCOL_TLS_1_3 */
+#define SHARKSSL_PROTOCOL_TLS_1_3                  0x34
+
+/* internal use, with SHARKSSL_PROTOCOL_TLS_1_x as parameter */
+#define SHARKSSL_PROTOCOL_MAJOR(p)                 (p >> 4)
+#define SHARKSSL_PROTOCOL_MINOR(p)                 (p & 0xF)
 
 /** @} */ /* end group SharkSslProtocol */ 
 
@@ -569,7 +588,7 @@ SharkSsl
    U16 nCon;
    #if (SHARKSSL_ENABLE_RSA || (SHARKSSL_ENABLE_ECDSA))  || SHARKSSL_NOPACK
    SingleList certList;
-   #if SHARKSSL_ENABLE_CA_LIST  || SHARKSSL_NOPACK
+   #if SHARKSSL_ENABLE_CA_LIST || SHARKSSL_NOPACK
    SharkSslCAList caList;
    #endif
    #endif
@@ -676,13 +695,6 @@ typedef enum
     */
    SharkSslCon_HandshakeNotComplete,
 
-   /** Returned by function #SharkSslCon_encrypt if
-       #SHARKSSL_ENABLE_CLONE_CERTINFO is disabled and when a complete
-       certificate is received from the peer during the SSL handshake
-       phase. Fixme more...
-   */
-   SharkSslCon_Certificate,
-
    /** Unrecognized format of a provided certificate.
     */
    SharkSslCon_CertificateError
@@ -783,20 +795,35 @@ typedef struct SharkSslCertDN
    U8 emailAddressLen;  /** length in bytes of the field "emailAddress" */
 } SharkSslCertDN;
 
+/** SharkSslCertDN constructor
+ */
 #define SharkSslCertDN_constructor(o) memset(o,0,sizeof(SharkSslCertDN))
-
+/** setCountryName
+ */
 #define SharkSslCertDN_setCountryName(o, countryNameMA) \
    (o)->countryName=(const U8*)countryNameMA,(o)->countryNameLen=(U8)strlen(countryNameMA)
+/** setProvince
+ */
 #define SharkSslCertDN_setProvince(o, provinceMA) \
    (o)->province=(const U8*)provinceMA,(o)->provinceLen=(U8)strlen(provinceMA)
+/** setLocality
+ */
 #define SharkSslCertDN_setLocality(o, localityMA) \
    (o)->locality=(const U8*)localityMA,(o)->localityLen=(U8)strlen(localityMA)
+/** setOrganization
+ */
 #define SharkSslCertDN_setOrganization(o, organizationMA) \
    (o)->organization=(const U8*)organizationMA,(o)->organizationLen=(U8)strlen(organizationMA)
+/** setUnit
+ */
 #define SharkSslCertDN_setUnit(o, unitMA) \
    (o)->unit=(const U8*)unitMA,(o)->unitLen=(U8)strlen(unitMA)
+/** setCommonName
+ */
 #define SharkSslCertDN_setCommonName(o, commonNameMA) \
    (o)->commonName=(const U8*)commonNameMA,(o)->commonNameLen=(U8)strlen(commonNameMA)
+/** setEmailAddress
+ */
 #define SharkSslCertDN_setEmailAddress(o, emailAddressMA) \
    (o)->emailAddress=(const U8*)emailAddressMA,(o)->emailAddressLen=(U8)strlen(emailAddressMA)
 
@@ -836,13 +863,13 @@ typedef struct SharkSslCertInfo
 
    /** The entity who has signed and issued the certificate (<a 
        href="http://tools.ietf.org/html/rfc2459#section-4.1.2.4"
-       >RFC2459 4.1.2.4</a>)
+       >RFC 2459 4.1.2.4</a>)
     */
    SharkSslCertDN issuer;
 
    /** The entity associated with the public key (<a 
        href="http://tools.ietf.org/html/rfc2459#section-4.1.2.6"
-       >RFC2459 4.1.2.6</a>).
+       >RFC 2459 4.1.2.6</a>).
     */
    SharkSslCertDN subject;
 
@@ -1067,8 +1094,13 @@ SharkSslCon_RetVal SharkSslCon_decrypt(SharkSslCon *o, U16 readLen);
 SharkSslCon_RetVal SharkSslCon_encrypt(SharkSslCon *o, U8 *buf, U16 maxLen);
 
 
-/** Returns TRUE if the SSL handshake phase is completed. See
-    state #SharkSslCon_Handshake for example code.
+/** Returns the following values:
+    \li 0: The TLS handshake has not completed.
+    \li 1: The TLS handshake has completed.
+    \li 2: The TLS handshake has completed; however, the SharkSSL
+    connection includes additional data that must be processed by calling
+    SharkSslCon_decrypt.
+    See state #SharkSslCon_Handshake for example code.
 */
 U8 SharkSslCon_isHandshakeComplete(SharkSslCon *o);
 
@@ -1205,6 +1237,23 @@ U8 *SharkSslCon_getHandshakeData(SharkSslCon *o);
 U16 SharkSslCon_getHandshakeDataLen(SharkSslCon *o);
 
 
+/** This function is used in conjunction with
+    SharkSslCon_getHandshakeData.
+    See #SharkSslCon_Handshake for example code.
+
+    The function returns the residual length of the handshake data 
+    that must be sent to the peer side, if any. The function returns 
+    zero if no handshake data should be sent.
+
+    \param o the SharkSslCon object returned by function #SharkSsl_createCon.
+    \param length is number of handshake bytes sent to the peer 
+    (usually via TCP/IP).
+
+    \sa SharkSslCon_getHandshakeData
+ */
+U16 SharkSslCon_setHandshakeDataSent(SharkSslCon *o, U16 length);
+
+
 /** This function is used in conjunction with state
     SharkSslCon_Encrypted returned by function
     #SharkSslCon_encrypt.
@@ -1294,6 +1343,7 @@ U8  SharkSslCon_getAlertDescription(SharkSslCon *o);
 
 /** @} */ /* end group SharkSslCoreApi */ 
 
+
 #if SHARKSSL_ENABLE_INFO_API
 
 /** Returns the active session's [chiper suite](@ref Ciphersuites)
@@ -1302,9 +1352,18 @@ SHARKSSL_API U16 SharkSslCon_getCiphersuite(SharkSslCon *o);
 
 /** Returns the active session's [protocol version](@ref SharkSslProtocol)
  */
+#if (SHARKSSL_TLS_1_3 && SHARKSSL_TLS_1_2)
+SHARKSSL_API U8  SharkSslCon_getProtocol(SharkSslCon *o);
+#elif SHARKSSL_TLS_1_3
+#define SharkSslCon_getProtocol(o) (SHARKSSL_PROTOCOL_TLS_1_3)
+#elif SHARKSSL_TLS_1_2
 #define SharkSslCon_getProtocol(o) (SHARKSSL_PROTOCOL_TLS_1_2)
+#else
+#error please enable at least one of SHARKSSL_TLS_1_3, SHARKSSL_TLS_1_2
+#endif
 
 #endif
+
 
 #if SHARKSSL_ENABLE_SNI
 
@@ -1326,14 +1385,9 @@ U8  SharkSslCon_certificateRequested(SharkSslCon *o);
 #endif
 
 /** Returns the peer's certificate if the handshaking has
-    completed. The certificate is available at any time if the code is
-    compiled with #SHARKSSL_ENABLE_CLONE_CERTINFO enabled. The
-    certificate is only available when #SharkSslCon_decrypt returns the
-    state #SharkSslCon_Certificate if the certificate cloning code is
-    not enabled.
+    completed. The certificate is available at any time.
  */
 SHARKSSL_API SharkSslCertInfo  *SharkSslCon_getCertInfo(SharkSslCon *o);
-
 
 /** Add a certificate to the SharkSsl object. A SharkSsl object in
     [server mode](\ref #SharkSsl_Server) is required to have at least
@@ -1387,6 +1441,9 @@ SHARKSSL_API U8  SharkSsl_setCAList(SharkSsl *o, SharkSslCAList caList);
 SHARKSSL_API U8  SharkSslCon_trustedCA(SharkSslCon *o);
 
 U8  SharkSslCon_isCAListEmpty(SharkSslCon *o);
+#else
+
+#define  SharkSslCon_trustedCA(o)   0
 #endif  /* SHARKSSL_ENABLE_CA_LIST */
 
 #if (SHARKSSL_SSL_SERVER_CODE && SHARKSSL_ENABLE_RSA)
@@ -1418,11 +1475,21 @@ U8  SharkSslCon_favorRSA(SharkSslCon *o, U8 flag);
 #endif  /* SHARKSSL_SSL_SERVER_CODE */
 #endif  /* SHARKSSL_ENABLE_RSA || SHARKSSL_ENABLE_ECDSA */
 
+#if SHARKSSL_SSL_CLIENT_CODE 
+U8  SharkSslCon_selectProtocol(SharkSslCon *o, U8 protocol);
+#endif
+
 /** @addtogroup SharkSslSessionApi
 @{
 */
 
 #if SHARKSSL_ENABLE_SESSION_CACHE
+
+#if SHARKSSL_ENABLE_INFO_API
+/** Returns 1 if the current session is a resumed one.
+ */
+SHARKSSL_API U8    SharkSslCon_isResumed(SharkSslCon *o);
+#endif
 
 /** Release a session created by function #SharkSslCon_acquireSession.
  */
@@ -1498,6 +1565,38 @@ SHARKSSL_API U32   SharkSslSession_getLatestAccessTime(SharkSslSession *o);
     handshaking phase.
  */
 SHARKSSL_API U8 SharkSslCon_requestClientCert(
+   SharkSslCon *o, const void *caList);
+#endif
+
+#if (SHARKSSL_TLS_1_3 && SHARKSSL_SSL_CLIENT_CODE && SHARKSSL_ENABLE_CA_EXTENSION && \
+    (SHARKSSL_ENABLE_RSA || SHARKSSL_ENABLE_ECDSA))
+/** This function is used by client solutions that require server SSL
+    certificate authentication. It implements the "Certificate Authorities"
+    extension as per RFC 8446, section 4.2.4.
+
+    The function must be called before the initial handshake has
+    started. 
+
+    \param o the SharkSslCon object returned by function #SharkSsl_createCon.
+
+    \param caList the SharkSSL CA list is in a binary format optimized
+    for speed and size. The list can be created by calling
+    #SharkSslCertStore_assemble or by using the command line tool
+    [SharkSSLParseCAList](\ref SharkSSLParseCAList). 
+    
+    Whenever the server is requested to provide an SSL certificate, 
+    this certificate must be signed using one of the CA certificates 
+    provided in the caList. The SSL handshake fails if the server's
+    certificate is not trusted or not signed with a known CA
+    certificate. In practice, for the specific connection, caList 
+    will take over the list associated with the SharkSSL object 
+    via #SharkSsl_setCAList.
+
+    \return TRUE (1) if the request is accepted. Returns FALSE (0) if
+    the SharkSSL connection is already going through or done with a
+    handshaking phase.
+ */
+SHARKSSL_API U8 SharkSslCon_setCertificateAuthorities(
    SharkSslCon *o, const void *caList);
 #endif
 
@@ -1949,13 +2048,10 @@ SHARKSSL_API sharkssl_RSA_RetVal sharkssl_RSA_private_decrypt(
 
 
 #if SHARKSSL_ENABLE_RSA_OAEP
-#if (!SHARKSSL_USE_SHA1)
-#error SHARKSSL_USE_SHA1 must be selected when SHARKSSL_ENABLE_RSA_OAEP is enabled
-#endif
 /** Decrypt ciphertext using the private key, padding is OAEP per RFC 8017.
 
    \param len is the length/size of parameter 'in'. This length must be
-   exactly #SharkSslRSAKey_size (key).
+   exactly #SharkSslRSAKey_size(privkey).
 
    \param in the ciphertext (must be in RAM)
 
@@ -1977,7 +2073,36 @@ SHARKSSL_API sharkssl_RSA_RetVal sharkssl_RSA_private_decrypt(
    \return the size of the decrypted ciphertext, or <0 if any error occurs
  */
 SHARKSSL_API sharkssl_RSA_RetVal sharkssl_RSA_private_decrypt_OAEP(
-   U16 len, U8 *in, U8 *out, SharkSslRSAKey privkey, U8 hashID, char *label, U16 labelLen);
+   U16 len, U8 *in, U8 *out, SharkSslRSAKey privkey, U8 hashID, const char *label, U16 labelLen);
+
+
+/** Decrypt ciphertext using the private key, padding is OAEP per RFC 8017.
+
+   \param len is the length/size of parameter 'in'. This length must be
+   not greater than #SharkSslRSAKey_size(pubkey) - (2 * labelLen) - 2.
+
+   \param in the cleartext (not required to be in RAM)
+
+   \param out the encrypted cleartext is copied to this buffer. The
+   size of this buffer must be #SharkSslRSAKey_size(pubkey)
+
+   \param pubkey is the public key in SharkSslRSAKey format. The matching 
+   private key can be provided, too.
+
+   \param hashID an identifier for the digest function used 
+    Allowed values are:
+        SHARKSSL_HASHID_SHA1
+
+   \param label is an optional label per RFC 8017 sec. 7.1.1. Use 
+    null string when empty.
+
+   \param labelLen is the length of the label. Specify 0 when label
+    is empty
+
+   \return the size of the encrypted ciphertext, or <0 if any error occurs
+ */
+SHARKSSL_API sharkssl_RSA_RetVal sharkssl_RSA_public_encrypt_OAEP(
+   U16 len, const U8 *in, U8 *out, SharkSslRSAKey pubkey, U8 hashID, const char *label, U16 labelLen);
 #endif
 
 
@@ -2040,7 +2165,7 @@ SHARKSSL_API sharkssl_RSA_RetVal sharkssl_RSA_public_decrypt(
     SHARKSSL_MD5_HASH_LEN
     SHARKSSL_SHA1_HASH_LEN
     SHARKSSL_SHA256_HASH_LEN
-    SHARKSSL_SHA384_HASH_LEN
+    16SHARKSSL_SHA384_HASH_LEN
     SHARKSSL_SHA512_HASH_LEN
     SHARKSSL_POLY1305_HASH_LEN
  */
@@ -2052,13 +2177,16 @@ SHARKSSL_API sharkssl_RSA_RetVal sharkssl_RSA_public_decrypt(
  * NamedCurve, use as curveID parameter
  * SECPxxxR1       - RFC 4492 section 5.1.1
  * BRAINPOOLPxxxR1 - RFC 7027 section 2
+ * CURVE25519,448  - RFC 8446 section 4.2.7
  */
-#define SHARKSSL_EC_CURVE_ID_SECP256R1       23
-#define SHARKSSL_EC_CURVE_ID_SECP384R1       24
-#define SHARKSSL_EC_CURVE_ID_SECP521R1       25
-#define SHARKSSL_EC_CURVE_ID_BRAINPOOLP256R1 26
-#define SHARKSSL_EC_CURVE_ID_BRAINPOOLP384R1 27
-#define SHARKSSL_EC_CURVE_ID_BRAINPOOLP512R1 28
+#define SHARKSSL_EC_CURVE_ID_SECP256R1        23
+#define SHARKSSL_EC_CURVE_ID_SECP384R1        24
+#define SHARKSSL_EC_CURVE_ID_SECP521R1        25
+#define SHARKSSL_EC_CURVE_ID_BRAINPOOLP256R1  26
+#define SHARKSSL_EC_CURVE_ID_BRAINPOOLP384R1  27
+#define SHARKSSL_EC_CURVE_ID_BRAINPOOLP512R1  28
+#define SHARKSSL_EC_CURVE_ID_CURVE25519       29
+#define SHARKSSL_EC_CURVE_ID_CURVE448         30
 
 
 /** 
@@ -2136,6 +2264,8 @@ SHARKSSL_API U16 SharkSslKey_vectSize(const SharkSslKey key);
     - SHARKSSL_EC_CURVE_ID_BRAINPOOLP256R1
     - SHARKSSL_EC_CURVE_ID_BRAINPOOLP384R1
     - SHARKSSL_EC_CURVE_ID_BRAINPOOLP512R1
+    - SHARKSSL_EC_CURVE_ID_CURVE25519
+    - SHARKSSL_EC_CURVE_ID_CURVE448
 
 
   \return the number of allocated bytes if the key creation was
@@ -2166,7 +2296,11 @@ SHARKSSL_API U16 SharkSslKey_vectSize(const SharkSslKey key);
    }
    \endcode
  */
-SHARKSSL_API int SharkSslECCKey_create(SharkSslECCKey *privKey, U16 curveID);
+
+typedef int (*sharkssl_rngfunc)(void* handle, U8 *ptr, U16 len);
+#define SharkSslECCKey_create(a, b) SharkSslECCKey_createEx((a), (b), 0, 0)
+
+SHARKSSL_API int SharkSslECCKey_createEx(SharkSslECCKey* privKey, U16 curveID, void* rngHandle, sharkssl_rngfunc rngFunc);
 #endif
 
 
@@ -2282,7 +2416,7 @@ SHARKSSL_API U16 sharkssl_ECDSA_siglen(SharkSslECCKey privkey);
 
     \param hashlen the length of the message digest (see above).
 
-    \return SHARKSSL_ECDSA_OK if the signature generation is succesful, 
+    \return SHARKSSL_ECDSA_OK if the signature generation is successful, 
      or one of the #sharkssl_ECDSA_RetVal error codes.
  */
 SHARKSSL_API sharkssl_ECDSA_RetVal sharkssl_ECDSA_sign_hash(
@@ -2303,7 +2437,7 @@ SHARKSSL_API sharkssl_ECDSA_RetVal sharkssl_ECDSA_sign_hash(
 
     \param hashlen the length of the message digest (see above).
 
-    \return SHARKSSL_ECDSA_OK if the signature verification is succesful, 
+    \return SHARKSSL_ECDSA_OK if the signature verification is successful, 
      or one of the #sharkssl_ECDSA_RetVal error codes.
  */
 SHARKSSL_API sharkssl_ECDSA_RetVal sharkssl_ECDSA_verify_hash(
