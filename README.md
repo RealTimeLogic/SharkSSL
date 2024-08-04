@@ -1,7 +1,7 @@
 # SharkSSL
 SharkSSL Amalgamated
 
-SharkSSL Amalgamated is a compact version of [SharkSSL](https://realtimelogic.com/products/sharkssl/) extracted from the SharkSSL SDK. SharkSSL Amalgamated includes all APIs found in the standard SharkSSL SDK. SharkSSL Amalgamated includes the following source code components.
+SharkSSL Amalgamated is a compact version of [SharkSSL](https://realtimelogic.com/products/sharkssl/) extracted from the SharkSSL SDK. This amalgamated version of SharkSSL is intended for evaluation purposes. [For full license details, please see below](#license). SharkSSL Amalgamated includes all APIs found in the standard SharkSSL SDK. SharkSSL Amalgamated includes the following source code components.
 
 * **SharkSSL.c**: Platform independent code (amalgamation of several files)
 * **TargConfig.h**: SharkSSL porting layer.
@@ -58,3 +58,13 @@ A basic makefile for Linux is included. The makefile shows how to build the [Sha
 ## SharkSSL IDE
 
 For FreeRTOS users: check out the super easy to use [SharkSSL IDE](https://realtimelogic.com/downloads/sharkssl/ESP32/) designed for educational purposes.
+
+## License
+
+SharkSSL Amalgamated is either licensed for use under the GPLv2 or a
+standard commercial license.  For our users who cannot use SharkSSL
+Amalgamated under GPLv2, a
+[commercial license is available](https://realtimelogic.com/contactus/license/). A
+free commercial license for small companies is available.  See the
+startup license page for details:
+https://realtimelogic.com/startuplic/
