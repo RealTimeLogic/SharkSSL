@@ -428,7 +428,7 @@ sendDevInfo(SharkMQ* smq, const char* ipaddr, U32 tid, U32 subtid)
 }
 
 /*
-  Calculate SHA1(password + salt) and return value in out param sha1Digest
+  Calculate SHA2(password + salt) and return value in out param sha2Digest
 
   The online broker does not use authentication. This function simply
   shows how one can create seeded hash based authentication. You can
@@ -441,14 +441,14 @@ sendDevInfo(SharkMQ* smq, const char* ipaddr, U32 tid, U32 subtid)
   Nonce: Details: https://en.wikipedia.org/wiki/Cryptographic_nonce
 
 */
-void calculateSaltedPassword(U32 nonce, U8 sha1Digest[20])
+void calculateSaltedPassword(U32 nonce, U8 sha2Digest[SHARKSSL_SHA256_HASH_LEN])
 {
    /* The device secret */
    const char* password="qwerty";
 
-   SharkSslSha1Ctx ctx;
+   SharkSslSha256Ctx ctx;
    U8 nonceData[4];
-   SharkSslSha1Ctx_constructor(&ctx);
+   SharkSslSha256Ctx_constructor(&ctx);
    /* Add salt (aka nonce) value provided by server and generate the salted
     * password hash.
     */
@@ -456,9 +456,9 @@ void calculateSaltedPassword(U32 nonce, U8 sha1Digest[20])
    nonceData[1] = (U8)(nonce >> 8);
    nonceData[2] = (U8)(nonce >> 16);
    nonceData[3] = (U8)(nonce >> 24);
-   SharkSslSha1Ctx_append(&ctx, (U8*)password, strlen(password));
-   SharkSslSha1Ctx_append(&ctx, nonceData, 4);
-   SharkSslSha1Ctx_finish(&ctx, sha1Digest);
+   SharkSslSha256Ctx_append(&ctx, (U8*)password, strlen(password));
+   SharkSslSha256Ctx_append(&ctx, nonceData, 4);
+   SharkSslSha256Ctx_finish(&ctx, sha2Digest);
 }
 
 
@@ -482,7 +482,8 @@ m2mled(SharkMQ* smq, SharkSslCon* scon,
 #endif
    char ipaddr[16];
    U32 nonce; /* Sent by server and received when SharkMQ_init() returns */
-   U8 sha1Digest[20]; /* See comment in function calculateSaltedPassword() */
+   /* See comment in function calculateSaltedPassword() */
+   U8 sha2Digest[SHARKSSL_SHA256_HASH_LEN];
 
 /* We make it possible to override the URL at the command prompt when
  * in simulation mode.
@@ -557,7 +558,7 @@ m2mled(SharkMQ* smq, SharkSslCon* scon,
 #endif
 
    /* Broker does not authenticate. See comment in calculateSaltedPassword. */
-   calculateSaltedPassword(nonce, sha1Digest); /* Store pwd in sha1Digest */
+   calculateSaltedPassword(nonce, sha2Digest); /* Store pwd in sha2Digest */
 
    /* Fetch the IP address sent by the broker. We use this for the
     * text shown in the left pane tab in the browser's user interface.
@@ -566,7 +567,7 @@ m2mled(SharkMQ* smq, SharkSslCon* scon,
    ipaddr[15]=0;
    if(SharkMQ_connect(smq,
                       smqUniqueId, smqUniqueIdLen,
-                      (char*)sha1Digest, sizeof(sha1Digest), /* credentials */
+                      (char*)sha2Digest, sizeof(sha2Digest), /* credentials */
                       getDevName(), strlen(getDevName()),1420))
    {
       xprintf(("Connect failed, status: %d\n", smq->status));

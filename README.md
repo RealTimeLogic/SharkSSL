@@ -51,6 +51,38 @@ All examples below use TLS. We recommend reading the article [Certificate Manage
 - **Chat-MQTT.c** - Shows how to use the [SharkMQTT Client Library](https://realtimelogic.com/ba/doc/en/C/shark/group__MQTTLib.html). The example expects inputs entered at the terminal when running and works best if two or more clients run simultaneosly. See the source code for details.
 - **AWS-MQTT.c** - Shows how to connect to Amazon's AWS IoT Core using the MQTT protocol. This example requires configuration. See the source code for details.
 
+## Testing the Examples
+
+The SharkSSL TLS stack and the included protocol stacks are mainly designed for embedded devices but can also be compiled for Windows and Linux. Below is an example demonstrating how to compile and run two examples on Linux and the Windows Subsystem for Linux (WSL).
+
+Start by installing the required tools and cloning the repository:
+
+``` shell
+sudo apt install git gcc
+git clone https://github.com/RealTimeLogic/SharkSSL
+cd SharkSSL/
+```
+
+How to compile the MQTT Chat Example:
+
+``` shell
+# Compile SharkSSL, SharkMQTT, the socket lib, and the chat example
+gcc -o Chat-MQTT -Iinc -Iinc/arch/Posix -Isrc/arch/Posix \
+    src/SharkSSL.c src/SharkMQTT.c src/selib.c examples/Chat-MQTT.c
+# Start the MQTT chat example
+./Chat-MQTT
+```
+
+How to compile the [SMQ LED Example](https://makoserver.net/articles/Browser-to-Device-LED-Control-using-SimpleMQ):
+
+``` shell
+# Compile SharkSSL, SharkMQ (secure SMQ), the socket lib, and the chat example
+gcc -o LED-SMQ -Iinc -Iinc/arch/Posix -Isrc/arch/Posix \
+    src/SharkSSL.c src/SharkMQ.c src/selib.c examples/LED-SMQ.c
+# Start the example
+./LED-SMQ
+```
+
 ## Makefile
 
 A basic makefile for Linux is included. The makefile shows how to build the [SharkSSL command line tools](https://realtimelogic.com/ba/doc/en/C/shark/md_md_Certificate_Management.html#CertificateTools) and most of the examples. The command line tools can also be compiled for Windows. Note that the examples requiring configuration will not work when compiled without modifications. The SMTP-example.c produces a compile error when not configured.
@@ -62,7 +94,7 @@ For FreeRTOS users: check out the super easy to use [SharkSSL IDE](https://realt
 ## License
 
 SharkSSL Amalgamated is either licensed for use under the GPLv2 or a
-standard commercial license.  For our users who cannot use SharkSSL
+standard commercial license. For our users who cannot use SharkSSL
 Amalgamated under GPLv2, a
 [commercial license is available](https://realtimelogic.com/contactus/license/). A
 free commercial license for small companies is available.  See the
