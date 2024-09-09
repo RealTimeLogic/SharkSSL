@@ -2687,6 +2687,11 @@ static int handleptrauth(SharkSslCon* o, U8* registeredevent, U16 len)
             {
                U8 savedsigmask;
 
+               if (paramnamed < 2)
+               {
+                  SHARKDBG_PRINTF(("\045\163\072\040\045\144\012", __FILE__, __LINE__));
+                  return -1;
+               }
                
                prminstwrite  = (U16)(*registeredevent++) << 8;
                prminstwrite += *registeredevent++;
@@ -2805,6 +2810,11 @@ static int handleptrauth(SharkSslCon* o, U8* registeredevent, U16 len)
          #endif  
 
          default:  
+            if (len < paramnamed)
+            {
+               SHARKDBG_PRINTF(("\045\163\072\040\045\144\012", __FILE__, __LINE__));
+               return -1;
+            }
             len -= paramnamed;
             registeredevent += paramnamed;
             break;
@@ -2919,6 +2929,11 @@ static int dfbmcs320device(SharkSslCon* o, U8* registeredevent, U16 len)
          case clkdmclear:
             if (paramnamed)
             {
+               if (len < 2)
+               {
+                  SHARKDBG_PRINTF(("\045\163\072\040\045\144\012", __FILE__, __LINE__));
+                  return -1;
+               }
                paramnamed = (U16)(*registeredevent++) << 8;
                paramnamed += *registeredevent++;
                len -= 2;
@@ -3047,6 +3062,11 @@ static int dfbmcs320device(SharkSslCon* o, U8* registeredevent, U16 len)
             if (SharkSsl_isServer(o->sharkSsl))
             {
                
+               if (len < paramnamed)
+               {
+                  SHARKDBG_PRINTF(("\045\163\072\040\045\144\012", __FILE__, __LINE__));
+                  return -1;
+               }
                len -= paramnamed;
                registeredevent += paramnamed;
             }
@@ -3073,6 +3093,11 @@ static int dfbmcs320device(SharkSslCon* o, U8* registeredevent, U16 len)
          
          default:  
             
+            if (len < paramnamed)
+            {
+               SHARKDBG_PRINTF(("\045\163\072\040\045\144\012", __FILE__, __LINE__));
+               return -1;
+            }
             len -= paramnamed;
             registeredevent += paramnamed;
             break;
