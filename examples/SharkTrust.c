@@ -10,7 +10,7 @@
  ****************************************************************************
  *   PROGRAM MODULE
  *
- *   $Id: SharkTrust.c 5076 2022-02-10 16:59:48Z wini $
+ *   $Id: SharkTrust.c 5589 2024-11-12 21:59:54Z wini $
  *
  *   COPYRIGHT:  Real Time Logic LLC, 2021
  *
@@ -80,13 +80,13 @@
 #include "certificates/device_RSA_2048.h"
 
 /* CA cert for SharkTrustEC.realtimelogic.com */
-#include "certificates/CA_RTL_EC_256.h"
+#include "certificates/CA_ISRG_Root_X1.h"
 
 
 /* The SharkTrust service instance name. Change this macro when you
    have your own SharkTrust service instance.
 */
-#define SHARK_TRUST_SERVICE_NAME "sharktrustEC.realtimelogic.com"
+#define SHARK_TRUST_SERVICE_NAME "equip.run"
 
 
 /* 
@@ -101,6 +101,10 @@
   The following functions are available for non embedded use.
  */
 #if  HOST_PLATFORM == 1
+
+#ifdef _WIN32
+#include <WS2tcpip.h>
+#endif
 
 /************************* Helper functions ******************************/
 
@@ -608,9 +612,9 @@ initiateCertReq(SeCtx* ctx, SharkSsl* sslServer)
                         4000,   /* initial inBuf size: cert rsp ~3500 */
                         3000);    /* outBuf size : must fit SharkTrust cert. */
    /* We must validate the SharkTrust server's certificate;
-      sharkSSL_New_RTL_ECC_CA -> header New-RTL-ECC-ca-pem.h
+      sharkSSL_CA_ISRG_Root_X1 -> header CA_ISRG_Root_X1.h
    */
-   SharkSsl_setCAList(&stcon.ssl, sharkSSL_New_RTL_ECC_CA);
+   SharkSsl_setCAList(&stcon.ssl, sharkSSL_CA_ISRG_Root_X1);
 
    SOCKET_constructor(&stcon.sock, ctx); /* Set invalid state */
    stcon.scon=0;
@@ -758,9 +762,9 @@ runWebSocketServer(MS* ms, WssProtocolHandshake* wph)
                sharkTrustSleepCounter--;
                if(sharkTrustSleepCounter % 5 == 0)
                {
-                  char buf[20];
-                  sprintf(buf,"%u", sharkTrustSleepCounter);
-                  MS_writeText(ms,buf,strlen(buf));
+                  char b[20];
+                  sprintf(b,"%u", sharkTrustSleepCounter);
+                  MS_writeText(ms,b,strlen(b));
                }
             }
          }
