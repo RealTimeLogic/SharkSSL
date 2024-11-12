@@ -12,7 +12,7 @@
  *
  *   $Id: SharkTrust.c 5589 2024-11-12 21:59:54Z wini $
  *
- *   COPYRIGHT:  Real Time Logic LLC, 2021
+ *   COPYRIGHT:  Real Time Logic LLC, 2021 - 2024
  *
  *   This software is copyrighted by and is the sole property of Real
  *   Time Logic LLC.  All rights, title, ownership, or other interests in
@@ -36,6 +36,7 @@
 
  SharkTrust:    https://realtimelogic.com/services/SharkTrust/
  Minnow Server: https://realtimelogic.com/products/sharkssl/minnow-server/
+ Howto: https://github.com/RealTimeLogic/SharkTrust/blob/master/examples/README.md#ready-to-run-minnow-web-server-example
 
  This example shows how to use a SharkTrust service to dynamically
  update the certificate in a running Minnow Server.  When to call the
