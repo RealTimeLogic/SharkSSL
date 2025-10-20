@@ -313,8 +313,12 @@ SharkSslCert removerecursive(SharkSslCertEnum *o);
 #define cacherange                 0x8
 
 
-#define SHARKSSL_KEYTYPE_RSA                       rewindsingle
-#define SHARKSSL_KEYTYPE_EC                        ts409partitions
+#if (SHARKSSL_KEYTYPE_RSA != rewindsingle)
+#error incoherency between SHARKSSL_KEYTYPE_RSA in SharkSSL.h and rewindsingle in SharkSslCert.h
+#endif
+#if (SHARKSSL_KEYTYPE_EC != ts409partitions)
+#error incoherency between SHARKSSL_KEYTYPE_EC in SharkSSL.h and ts409partitions in SharkSslCert.h
+#endif
 
 #define coupledexynos(e)               (mcbspregister(e) & cacherange)
 #define allocatoralloc(e)             (mcbspregister(e) & mutantchannel)
@@ -510,7 +514,6 @@ int  systemcapabilities(const SharkSslSignParam*);
 SHARKSSL_API int  spromregister(SharkSslCertParam*, const U8*, U32, U8*);
 U8   SharkSslCertDN_equal(const SharkSslCertDN*, const SharkSslCertDN*);
 SHARKSSL_API U16 interrupthandler(SharkSslCertKey*, SharkSslCert);
-U16  SharkSslCert_vectSize_keyType(const SharkSslCert, U8*);
 #if SHARKSSL_ENABLE_CLIENT_AUTH
 U8   domainassociate(SharkSslCert, U8*, U16);
 #endif
@@ -834,8 +837,12 @@ SharkSslCert removerecursive(SharkSslCertEnum *o);
 #define cacherange                 0x8
 
 
-#define SHARKSSL_KEYTYPE_RSA                       rewindsingle
-#define SHARKSSL_KEYTYPE_EC                        ts409partitions
+#if (SHARKSSL_KEYTYPE_RSA != rewindsingle)
+#error incoherency between SHARKSSL_KEYTYPE_RSA in SharkSSL.h and rewindsingle in SharkSslCert.h
+#endif
+#if (SHARKSSL_KEYTYPE_EC != ts409partitions)
+#error incoherency between SHARKSSL_KEYTYPE_EC in SharkSSL.h and ts409partitions in SharkSslCert.h
+#endif
 
 #define coupledexynos(e)               (mcbspregister(e) & cacherange)
 #define allocatoralloc(e)             (mcbspregister(e) & mutantchannel)
@@ -1031,7 +1038,6 @@ int  systemcapabilities(const SharkSslSignParam*);
 SHARKSSL_API int  spromregister(SharkSslCertParam*, const U8*, U32, U8*);
 U8   SharkSslCertDN_equal(const SharkSslCertDN*, const SharkSslCertDN*);
 SHARKSSL_API U16 interrupthandler(SharkSslCertKey*, SharkSslCert);
-U16  SharkSslCert_vectSize_keyType(const SharkSslCert, U8*);
 #if SHARKSSL_ENABLE_CLIENT_AUTH
 U8   domainassociate(SharkSslCert, U8*, U16);
 #endif
@@ -2348,12 +2354,11 @@ int SharkSslCertParam_validateCertChain(SharkSslCertParam *certParam, SharkSslSi
 #define coverstate   0x00080000L  
 
 
-#if SHARKSSL_TLS_1_2
 #if SHARKSSL_SSL_SERVER_CODE
 #if SHARKSSL_ENABLE_SNI
 #include <SharkSslEx.h>
 #endif
-static int handleptrauth(SharkSslCon *o, SHARKSSL_WEIGHT *mfgpt0counter, U8 *registeredevent, U16 len)
+static int writepmresr(SharkSslCon *o, SHARKSSL_WEIGHT *mfgpt0counter, U8 *registeredevent, U16 len)
 {
    SHARKSSL_WEIGHT *p;
    SingleListEnumerator e;
@@ -2361,11 +2366,14 @@ static int handleptrauth(SharkSslCon *o, SHARKSSL_WEIGHT *mfgpt0counter, U8 *reg
    SharkSslHSParam *sharkSslHSParam;
 
 #else
-static int handleptrauth(SharkSslCon* o, U8* registeredevent, U16 len)
+static int writepmresr(SharkSslCon* o, U8* registeredevent, U16 len)
 {
 #endif
 
    U16 prminstwrite, paramnamed;
+   #if SHARKSSL_TLS_1_3
+   U16 kLen, ksLen;
+   #endif
 
    baAssert(o);
    baAssert(registeredevent);
@@ -2501,12 +2509,14 @@ static int handleptrauth(SharkSslCon* o, U8* registeredevent, U16 len)
          case featurespresent:
             if (len < 1)
             {
+               SHARKDBG_PRINTF(("\045\163\072\040\045\144\012", __FILE__, __LINE__));
                return -1;
             }
             paramnamed = *registeredevent++;
             len--;
             if (paramnamed > len)
             {
+               SHARKDBG_PRINTF(("\045\163\072\040\045\144\012", __FILE__, __LINE__));
                return -1;
             }
             len -= paramnamed;
@@ -2651,6 +2661,199 @@ static int handleptrauth(SharkSslCon* o, U8* registeredevent, U16 len)
 
                registeredevent += prminstwrite;
                paramnamed -= prminstwrite;
+            }
+            break;
+         #endif  
+
+         #if SHARKSSL_TLS_1_3
+         case reboothandler:
+            
+            if (len < 5)
+            {
+               SHARKDBG_PRINTF(("\045\163\072\040\045\144\012", __FILE__, __LINE__));
+               return -1;
+            }
+            #if SHARKSSL_TLS_1_2
+            if (SHARKSSL_PROTOCOL_MINOR(SHARKSSL_PROTOCOL_TLS_1_2) == o->minor)  
+            {
+               goto _skip_over_extension;
+            }
+            #endif
+            #if SHARKSSL_TLS_1_3 && SHARKSSL_SSL_SERVER_CODE
+            ksLen = 0;  
+            if (SharkSsl_isServer(o->sharkSsl))
+            {
+               
+               ksLen = (U16)(*registeredevent++) << 8;
+               ksLen += (*registeredevent++);
+               len -= 2;
+               if ((len < ksLen) || (paramnamed < ksLen))
+               {
+                  SHARKDBG_PRINTF(("\045\163\072\040\045\144\012", __FILE__, __LINE__));
+                  return -1;
+               }
+            }
+            _next_key_share_entry:
+            #endif
+            prminstwrite = (U16)(*registeredevent++) << 8;
+            prminstwrite += (*registeredevent++);
+            len -= 2;
+            
+            kLen = controllerregister(prminstwrite);
+            
+            paramnamed = (U16)(*registeredevent++) << 8;
+            paramnamed += (*registeredevent++);
+            len -= 2;
+            if (len < paramnamed)
+            {
+               SHARKDBG_PRINTF(("\045\163\072\040\045\144\012", __FILE__, __LINE__));
+               return -1;
+            }
+            #if SHARKSSL_TLS_1_3 && SHARKSSL_SSL_SERVER_CODE
+            if (SharkSsl_isServer(o->sharkSsl))
+            {
+               if (ksLen < paramnamed)
+               {
+                  SHARKDBG_PRINTF(("\045\163\072\040\045\144\012", __FILE__, __LINE__));
+                  return -1;
+               }
+            }
+            #endif
+            if (0 == kLen)  
+            {
+               #if SHARKSSL_TLS_1_3 && SHARKSSL_SSL_SERVER_CODE
+               if (SharkSsl_isServer(o->sharkSsl))
+               {
+                  
+                  ksLen -= paramnamed;
+                  ksLen -= 4; 
+                  len -= paramnamed;
+                  registeredevent += paramnamed;
+                  if (ksLen)
+                  {
+                     goto _next_key_share_entry;
+                  }
+                  else  
+                  {
+                     SHARKDBG_PRINTF(("\045\163\072\040\045\144\012", __FILE__, __LINE__));
+                     return -1;
+                  }
+               }
+               else
+               #endif
+               {
+                  SHARKDBG_PRINTF(("\045\163\072\040\045\144\012", __FILE__, __LINE__));
+                  return -1;
+               }
+            }
+            hsParam(o)->ecdhParam.curveType = prminstwrite;  
+            #if SHARKSSL_ECC_USE_EDWARDS
+            if ((prminstwrite == TLS_NAMEDGROUP_CURVE25519) || (prminstwrite == TLS_NAMEDGROUP_CURVE448))
+            {
+               if (paramnamed != kLen)
+               {
+                  SHARKDBG_PRINTF(("\045\163\072\040\045\144\012", __FILE__, __LINE__));
+                  return -1;
+               }
+            }
+            else
+            #endif
+            {
+               #if (SHARKSSL_ECC_USE_SECP256R1 || SHARKSSL_ECC_USE_SECP384R1)
+               if (*registeredevent++ != SHARKSSL_EC_POINT_UNCOMPRESSED)
+               {
+                  SHARKDBG_PRINTF(("\045\163\072\040\045\144\012", __FILE__, __LINE__));
+                  return -1;
+               }
+               paramnamed--;
+               len--;
+               if (paramnamed != (U16)(kLen << 1))
+               {
+                  SHARKDBG_PRINTF(("\045\163\072\040\045\144\012", __FILE__, __LINE__));
+                  return -1;
+               }
+               #else
+               SHARKDBG_PRINTF(("\045\163\072\040\045\144\012", __FILE__, __LINE__));
+               return -1;
+               #endif
+            }
+            hsParam(o)->ecdhParam.xLen = kLen;
+            hsParam(o)->ecdhParam.XY = registeredevent;      
+            switch (prminstwrite)
+            {
+               #if SHARKSSL_ECC_USE_SECP384R1
+               case pciercxcfg034:
+                  hsParam(o)->ecdhParam.k = hsParam(o)->prot.tls13.privKeySECP384R1;
+                  break;
+               #endif
+
+               #if SHARKSSL_ECC_USE_SECP256R1
+               case ucb1400pdata:
+                  hsParam(o)->ecdhParam.k = hsParam(o)->prot.tls13.privKeySECP256R1;
+                  break;
+               #endif
+
+               #if SHARKSSL_ECC_USE_CURVE25519
+               case TLS_NAMEDGROUP_CURVE25519:
+                  hsParam(o)->ecdhParam.k = hsParam(o)->prot.tls13.privKeyCURVE25519;
+                  break;
+               #endif
+
+               #if SHARKSSL_ECC_USE_CURVE448
+               case TLS_NAMEDGROUP_CURVE448:
+                  hsParam(o)->ecdhParam.k = hsParam(o)->prot.tls13.privKeyCURVE448;
+                  break;
+               #endif
+
+               default:
+                  SHARKDBG_PRINTF(("\045\163\072\040\045\144\012", __FILE__, __LINE__));
+                  return -1;
+            }
+            len -= paramnamed;
+            registeredevent += paramnamed;
+            if (SharkSsl_isClient(o->sharkSsl))
+            {
+               
+               SharkSslECDHParam_ECDH(&(hsParam(o)->ecdhParam), switcheractive, hsParam(o)->ecdhParam.k);
+            }
+            break;
+
+         case allocconsistent:
+            #if SHARKSSL_TLS_1_2
+            if (SHARKSSL_PROTOCOL_MINOR(SHARKSSL_PROTOCOL_TLS_1_2) == o->minor)  
+            {
+               goto _skip_over_extension;
+            }
+            #endif
+            #if SHARKSSL_SSL_SERVER_CODE
+            if (SharkSsl_isServer(o->sharkSsl))
+            {
+               
+               if (len < paramnamed)
+               {
+                  SHARKDBG_PRINTF(("\045\163\072\040\045\144\012", __FILE__, __LINE__));
+                  return -1;
+               }
+               len -= paramnamed;
+               registeredevent += paramnamed;
+            }
+            else
+            #endif
+            {
+               if (len < 2)
+               {
+                  SHARKDBG_PRINTF(("\045\163\072\040\045\144\012", __FILE__, __LINE__));
+                  return -1;
+               }
+               paramnamed = (U16)(*registeredevent++) << 8;  
+               paramnamed += (*registeredevent++);
+               len -= 2;
+               if (paramnamed != 0)  
+               {
+                  SHARKDBG_PRINTF(("\045\163\072\040\045\144\012", __FILE__, __LINE__));
+                  return -1;
+               }
+               o->flags |= startqueue;
             }
             break;
          #endif  
@@ -2810,12 +3013,18 @@ static int handleptrauth(SharkSslCon* o, U8* registeredevent, U16 len)
          #endif
          #endif  
 
+         
+
          default:  
+            
             if (len < paramnamed)
             {
                SHARKDBG_PRINTF(("\045\163\072\040\045\144\012", __FILE__, __LINE__));
                return -1;
             }
+            #if (SHARKSSL_TLS_1_3 && SHARKSSL_TLS_1_2)
+            _skip_over_extension:
+            #endif
             len -= paramnamed;
             registeredevent += paramnamed;
             break;
@@ -2823,13 +3032,14 @@ static int handleptrauth(SharkSslCon* o, U8* registeredevent, U16 len)
    }
    return 0;
 }
-#endif  
-
 
 #if SHARKSSL_TLS_1_3
-#if SHARKSSL_SSL_CLIENT_CODE
 
-static int dfbmcs320device(SharkSslCon* o, U8* registeredevent, U16 len)
+#if (SHARKSSL_SSL_CLIENT_CODE && SHARKSSL_SSL_SERVER_CODE)
+static int ZZTSTSharkSslCon_parseExtensionSV(SharkSslCon* o, U8* registeredevent, U16 len, SharkSsl_Role startkernel)
+#else
+static int ZZTSTSharkSslCon_parseExtensionSV(SharkSslCon* o, U8* registeredevent, U16 len)
+#endif
 {
    U16 prminstwrite, paramnamed;
 
@@ -2863,17 +3073,57 @@ static int dfbmcs320device(SharkSslCon* o, U8* registeredevent, U16 len)
          #if (SHARKSSL_PROTOCOL_MAJOR(SHARKSSL_PROTOCOL_TLS_1_3) != SHARKSSL_PROTOCOL_MAJOR(SHARKSSL_PROTOCOL_TLS_1_2))
          #error INTERNAL ERROR SHARKSSL_PROTOCOL_MAJOR TLS 1.3 <> TLS 1.2
          #endif
-         if ((paramnamed != 2) || (*registeredevent++ != SHARKSSL_PROTOCOL_MAJOR(SHARKSSL_PROTOCOL_TLS_1_3)))
+         #if SHARKSSL_SSL_CLIENT_CODE 
+         #if SHARKSSL_SSL_SERVER_CODE
+         if (SharkSsl_Client == startkernel)
+         #endif
          {
+            if ((paramnamed != 2) || (*registeredevent++ != SHARKSSL_PROTOCOL_MAJOR(SHARKSSL_PROTOCOL_TLS_1_3)))
+            {
+               SHARKDBG_PRINTF(("\045\163\072\040\045\144\012", __FILE__, __LINE__));
+               return -1;  
+            }
+            if ((*registeredevent != SHARKSSL_PROTOCOL_MINOR(SHARKSSL_PROTOCOL_TLS_1_3)) && (*registeredevent != SHARKSSL_PROTOCOL_MINOR(SHARKSSL_PROTOCOL_TLS_1_2)))
+            {
+               SHARKDBG_PRINTF(("\045\163\072\040\045\144\012", __FILE__, __LINE__));
+               return -1;  
+            }
+            return (int)*registeredevent;
+         }
+         #if SHARKSSL_SSL_SERVER_CODE
+         else
+         #endif
+         #endif  
+         #if SHARKSSL_SSL_SERVER_CODE
+         {
+            #if SHARKSSL_SSL_CLIENT_CODE
+            baAssert(SharkSsl_Server == startkernel);  
+            #endif
+            if (!(paramnamed & 1))
+            {
+               SHARKDBG_PRINTF(("\045\163\072\040\045\144\012", __FILE__, __LINE__));
+               return -1;  
+            }
+            paramnamed--;
+            if (paramnamed != *registeredevent++)  
+            {
+               SHARKDBG_PRINTF(("\045\163\072\040\045\144\012", __FILE__, __LINE__));
+               return -1;  
+            }
+            while (paramnamed >= 2)
+            {
+               if ((SHARKSSL_PROTOCOL_MAJOR(SHARKSSL_PROTOCOL_TLS_1_3) == *registeredevent++) && 
+                   ((SHARKSSL_PROTOCOL_MINOR(SHARKSSL_PROTOCOL_TLS_1_3) == *registeredevent) || (SHARKSSL_PROTOCOL_MINOR(SHARKSSL_PROTOCOL_TLS_1_2) == *registeredevent)))
+               {
+                  return (int)*registeredevent;  
+               }
+               registeredevent++;
+               paramnamed -= 2;
+            }
             SHARKDBG_PRINTF(("\045\163\072\040\045\144\012", __FILE__, __LINE__));
             return -1;  
          }
-         if ((*registeredevent != SHARKSSL_PROTOCOL_MINOR(SHARKSSL_PROTOCOL_TLS_1_3)) && (*registeredevent != SHARKSSL_PROTOCOL_MINOR(SHARKSSL_PROTOCOL_TLS_1_2)))
-         {
-            SHARKDBG_PRINTF(("\045\163\072\040\045\144\012", __FILE__, __LINE__));
-            return -1;  
-         }
-         return (int)*registeredevent;
+         #endif  
       }
       else  
       {
@@ -2882,230 +3132,6 @@ static int dfbmcs320device(SharkSslCon* o, U8* registeredevent, U16 len)
       }
    }
    return 0;  
-}
-#endif  
-
-   
- static int registerclass(SharkSslCon *o, U8 *registeredevent, U16 len)
-{
-   U16 prminstwrite, paramnamed, kLen;
-
-   baAssert(o);
-   baAssert(registeredevent);
-   #if SHARKSSL_USE_ECC
-   baAssert(SHARKSSL_EC_CURVE_ID_SECP256R1 == ucb1400pdata);
-   baAssert(SHARKSSL_EC_CURVE_ID_SECP384R1 == pciercxcfg034);
-   baAssert(SHARKSSL_EC_CURVE_ID_SECP521R1 == audiopdata);
-   baAssert(SHARKSSL_EC_CURVE_ID_BRAINPOOLP256R1 == gpio3config);
-   baAssert(SHARKSSL_EC_CURVE_ID_BRAINPOOLP384R1 == negativeoffset);
-   baAssert(SHARKSSL_EC_CURVE_ID_BRAINPOOLP512R1 == sa1111disable);
-   baAssert(SHARKSSL_EC_CURVE_ID_CURVE25519 == TLS_NAMEDCURVE_CURVE25519);
-   baAssert(SHARKSSL_EC_CURVE_ID_CURVE448 == TLS_NAMEDCURVE_CURVE448);
-   #endif
-
-   while (len >= 2)
-   {
-      prminstwrite = (U16)(*registeredevent++) << 8;
-      prminstwrite += *registeredevent++;
-      len -= 2;
-
-      if (len < 2)
-      {
-         SHARKDBG_PRINTF(("\045\163\072\040\045\144\012", __FILE__, __LINE__));
-         return -1;
-      }
-
-      paramnamed = (U16)(*registeredevent++) << 8;
-      paramnamed += *registeredevent++;
-      len -= 2;
-
-      if (len < paramnamed)
-      {
-         return -1;
-      }
-
-      switch (prminstwrite)
-      {
-         #if SHARKSSL_ENABLE_ALPN_EXTENSION
-         case clkdmclear:
-            if (paramnamed)
-            {
-               if (len < 2)
-               {
-                  SHARKDBG_PRINTF(("\045\163\072\040\045\144\012", __FILE__, __LINE__));
-                  return -1;
-               }
-               paramnamed = (U16)(*registeredevent++) << 8;
-               paramnamed += *registeredevent++;
-               len -= 2;
-               if (paramnamed > len)
-               {
-                  SHARKDBG_PRINTF(("\045\163\072\040\045\144\012", __FILE__, __LINE__));
-                  return -1;
-               }
-               paramnamed = *registeredevent++;
-               len--;
-               if (paramnamed > len)
-               {
-                  SHARKDBG_PRINTF(("\045\163\072\040\045\144\012", __FILE__, __LINE__));
-                  return -1;
-               }
-               len -= paramnamed;
-               
-               if (o->pALPN)
-               {
-                  
-                  U8* afterhandler = (U8*)baMalloc(paramnamed + 1);
-                  if (afterhandler)
-                  {
-                     memcpy(afterhandler, registeredevent, paramnamed);
-                     *(afterhandler + paramnamed) = 0;
-                     o->rALPN = strstr(o->pALPN, (const char*)afterhandler);
-                     baFree(afterhandler);
-                  }
-               }
-               registeredevent += paramnamed;
-            }
-            break;
-         #endif
-
-         case reboothandler:
-            if (len < 5)
-            {
-               SHARKDBG_PRINTF(("\045\163\072\040\045\144\012", __FILE__, __LINE__));
-               return -1;
-            }
-            prminstwrite = (U16)(*registeredevent++) << 8;
-            prminstwrite += (*registeredevent++);
-            len -= 2;
-            hsParam(o)->ecdhParam.curveType = prminstwrite;  
-            
-            kLen = controllerregister(prminstwrite);
-            
-            paramnamed = (U16)(*registeredevent++) << 8;
-            paramnamed += (*registeredevent++);
-            len -= 2;
-            if ((0 == kLen) || (len < paramnamed))
-            {
-               SHARKDBG_PRINTF(("\045\163\072\040\045\144\012", __FILE__, __LINE__));
-               return -1;
-            }
-            #if SHARKSSL_ECC_USE_EDWARDS
-            if ((prminstwrite == TLS_NAMEDGROUP_CURVE25519) || (prminstwrite == TLS_NAMEDGROUP_CURVE448))
-            {
-               if (paramnamed != kLen)
-               {
-                  SHARKDBG_PRINTF(("\045\163\072\040\045\144\012", __FILE__, __LINE__));
-                  return -1;
-               }
-            }
-            else
-            #endif
-            {
-               #if (SHARKSSL_ECC_USE_SECP256R1 || SHARKSSL_ECC_USE_SECP384R1)
-               if (*registeredevent++ != SHARKSSL_EC_POINT_UNCOMPRESSED)
-               {
-                  SHARKDBG_PRINTF(("\045\163\072\040\045\144\012", __FILE__, __LINE__));
-                  return -1;
-               }
-               paramnamed--;
-               len--;
-               if (paramnamed != (U16)(kLen << 1))
-               {
-                  SHARKDBG_PRINTF(("\045\163\072\040\045\144\012", __FILE__, __LINE__));
-                  return -1;
-               }
-               #else
-               SHARKDBG_PRINTF(("\045\163\072\040\045\144\012", __FILE__, __LINE__));
-               return -1;
-               #endif
-            }
-            hsParam(o)->ecdhParam.xLen = kLen;
-            hsParam(o)->ecdhParam.XY = registeredevent;      
-            switch (prminstwrite)
-            {
-               #if SHARKSSL_ECC_USE_SECP384R1
-               case pciercxcfg034:
-                  hsParam(o)->ecdhParam.k = hsParam(o)->prot.tls13.privKeySECP384R1;
-                  break;
-               #endif
-
-               #if SHARKSSL_ECC_USE_SECP256R1
-               case ucb1400pdata:
-                  hsParam(o)->ecdhParam.k = hsParam(o)->prot.tls13.privKeySECP256R1;
-                  break;
-               #endif
-
-               #if SHARKSSL_ECC_USE_CURVE25519
-               case TLS_NAMEDGROUP_CURVE25519:
-                  hsParam(o)->ecdhParam.k = hsParam(o)->prot.tls13.privKeyCURVE25519;
-                  break;
-               #endif
-
-               #if SHARKSSL_ECC_USE_CURVE448
-               case TLS_NAMEDGROUP_CURVE448:
-                  hsParam(o)->ecdhParam.k = hsParam(o)->prot.tls13.privKeyCURVE448;
-                  break;
-               #endif
-
-               default:
-                  SHARKDBG_PRINTF(("\045\163\072\040\045\144\012", __FILE__, __LINE__));
-                  return -1;
-            }
-            len -= paramnamed;
-            registeredevent += paramnamed;
-            
-            SharkSslECDHParam_ECDH(&(hsParam(o)->ecdhParam), switcheractive, hsParam(o)->ecdhParam.k);
-            break;
-
-         case allocconsistent:
-            #if SHARKSSL_SSL_SERVER_CODE
-            if (SharkSsl_isServer(o->sharkSsl))
-            {
-               
-               if (len < paramnamed)
-               {
-                  SHARKDBG_PRINTF(("\045\163\072\040\045\144\012", __FILE__, __LINE__));
-                  return -1;
-               }
-               len -= paramnamed;
-               registeredevent += paramnamed;
-            }
-            else
-            #endif
-            {
-               if (len < 2)
-               {
-                  SHARKDBG_PRINTF(("\045\163\072\040\045\144\012", __FILE__, __LINE__));
-                  return -1;
-               }
-               paramnamed = (U16)(*registeredevent++) << 8;  
-               paramnamed += (*registeredevent++);
-               len -= 2;
-               if (paramnamed != 0)  
-               {
-                  SHARKDBG_PRINTF(("\045\163\072\040\045\144\012", __FILE__, __LINE__));
-                  return -1;
-               }
-               o->flags |= startqueue;
-            }
-            break;
-
-         
-         default:  
-            
-            if (len < paramnamed)
-            {
-               SHARKDBG_PRINTF(("\045\163\072\040\045\144\012", __FILE__, __LINE__));
-               return -1;
-            }
-            len -= paramnamed;
-            registeredevent += paramnamed;
-            break;
-      }
-   }
-
-   return 0;
 }
 #endif  
 
@@ -4475,18 +4501,83 @@ SharkSslCon_RetVal configdword(SharkSslCon *o,
                SHARKDBG_PRINTF(("\045\163\072\040\045\144\012", __FILE__, __LINE__));
                goto regionfixed;
             }
+            
             paramnamed  = (U16)(*registeredevent++) << 8;
             paramnamed += *registeredevent++;
             hsDataLen -= 2;
-
-            if (hsDataLen < paramnamed)
+            if (hsDataLen != paramnamed)  
             {
                SHARKDBG_PRINTF(("\045\163\072\040\045\144\012", __FILE__, __LINE__));
                goto regionfixed;
             }
 
+            #if SHARKSSL_TLS_1_3
             
-            i = (U16)handleptrauth(o, (SHARKSSL_WEIGHT*)afterhandler, registeredevent, paramnamed);
+            #if (SHARKSSL_SSL_SERVER_CODE && SHARKSSL_SSL_CLIENT_CODE)
+            now_ccLen = ZZTSTSharkSslCon_parseExtensionSV(o, registeredevent, paramnamed, SharkSsl_Server);
+            #else
+            now_ccLen = ZZTSTSharkSslCon_parseExtensionSV(o, registeredevent, paramnamed);
+            #endif
+            #else
+            now_ccLen = 0;  
+            #endif
+
+            switch (now_ccLen)
+            {
+               #if SHARKSSL_TLS_1_3
+               case SHARKSSL_PROTOCOL_MINOR(SHARKSSL_PROTOCOL_TLS_1_3):
+                  
+                  if (SHARKSSL_PROTOCOL_MINOR(SHARKSSL_PROTOCOL_TLS_1_2) == o->minor)
+                  {
+                     o->minor = SHARKSSL_PROTOCOL_MINOR(SHARKSSL_PROTOCOL_TLS_1_2);   
+                  }
+                  else
+                  {
+                     SHARKDBG_PRINTF(("\045\163\072\040\045\144\012", __FILE__, __LINE__));
+                     return savedconfig(o, SHARKSSL_ALERT_PROTOCOL_VERSION);
+                  }
+                  break;
+
+               case SHARKSSL_PROTOCOL_MINOR(SHARKSSL_PROTOCOL_TLS_1_2):
+                  #if SHARKSSL_TLS_1_2
+                  if ((o->minor == 0) || (SHARKSSL_PROTOCOL_MINOR(SHARKSSL_PROTOCOL_TLS_1_2) == o->minor))
+                  {
+                     o->minor = SHARKSSL_PROTOCOL_MINOR(SHARKSSL_PROTOCOL_TLS_1_2);
+                     break;
+                  }
+                  SHARKDBG_PRINTF(("\045\163\072\040\045\144\012", __FILE__, __LINE__));
+                  goto regionfixed;
+                  #else
+                  goto _sharkssl_hs_alert_protocol_version;
+                  #endif
+                  break;  
+               #endif  
+
+               case 0:  
+                  if (o->minor == 0)  
+                  {
+                     #if SHARKSSL_TLS_1_2
+                     o->minor = SHARKSSL_PROTOCOL_MINOR(SHARKSSL_PROTOCOL_TLS_1_2);
+                     break;
+                     #endif
+                     
+                  }
+                  #if SHARKSSL_TLS_1_2
+                  else if (SHARKSSL_PROTOCOL_MINOR(SHARKSSL_PROTOCOL_TLS_1_2) == o->minor)  
+                  {
+                     break;
+                  }
+                  #endif
+                  
+
+               default:  
+                  SHARKDBG_PRINTF(("\045\163\072\040\045\144\012", __FILE__, __LINE__));
+                  goto regionfixed;
+                  break;
+            }
+
+            
+            i = (U16)writepmresr(o, (SHARKSSL_WEIGHT*)afterhandler, registeredevent, paramnamed);
             if (i != 0)
             {
                #if SHARKSSL_ENABLE_ALPN_EXTENSION
@@ -4496,9 +4587,25 @@ SharkSslCon_RetVal configdword(SharkSslCon *o,
                   return savedconfig(o, SHARKSSL_ALERT_NO_APPLICATION_PROTOCOL);
                }
                #endif
+               #if SHARKSSL_TLS_1_3
+               if ((U16)-3 == i)
+               {
+                  SHARKDBG_PRINTF(("\045\163\072\040\045\144\012", __FILE__, __LINE__));
+                  return savedconfig(o, SHARKSSL_ALERT_MISSING_EXTENSION);
+               }
+               #endif
                goto _sharkssl_hs_alert_handshake_failure;
             }
             hsDataLen -= paramnamed;
+         }
+         else  
+         {
+            #if SHARKSSL_TLS_1_2
+            o->minor = SHARKSSL_PROTOCOL_MINOR(SHARKSSL_PROTOCOL_TLS_1_2);
+            #else
+            SHARKDBG_PRINTF(("\045\163\072\040\045\144\012", __FILE__, __LINE__));
+            return savedconfig(o, SHARKSSL_ALERT_PROTOCOL_VERSION);
+            #endif
          }
 
          #if SHARKSSL_ENABLE_SNI
@@ -5493,7 +5600,7 @@ SharkSslCon_RetVal configdword(SharkSslCon *o,
          if (*registeredevent++ != o->major)  
          {
             SHARKDBG_PRINTF(("\045\163\072\040\045\144\012", __FILE__, __LINE__));
-            #if !SHARKSSL_TLS_1_2
+            #if (!SHARKSSL_TLS_1_2 || !SHARKSSL_SSL_SERVER_CODE)
             _sharkssl_hs_alert_handshake_failure:
             #endif
             return savedconfig(o, SHARKSSL_ALERT_HANDSHAKE_FAILURE);
@@ -5595,7 +5702,11 @@ SharkSslCon_RetVal configdword(SharkSslCon *o,
 
             #if SHARKSSL_TLS_1_3
             
-            now_ccLen = dfbmcs320device(o, registeredevent, paramnamed);
+            #if (SHARKSSL_SSL_SERVER_CODE && SHARKSSL_SSL_CLIENT_CODE)
+            now_ccLen = ZZTSTSharkSslCon_parseExtensionSV(o, registeredevent, paramnamed, SharkSsl_Client);
+            #else
+            now_ccLen = ZZTSTSharkSslCon_parseExtensionSV(o, registeredevent, paramnamed);
+            #endif
             #else
             now_ccLen = 0;  
             #endif
@@ -5673,16 +5784,20 @@ SharkSslCon_RetVal configdword(SharkSslCon *o,
             {
                #if SHARKSSL_TLS_1_3
                case SHARKSSL_PROTOCOL_MINOR(SHARKSSL_PROTOCOL_TLS_1_3):
-                  now_ccLen = (U32)registerclass(o, registeredevent, paramnamed);
+                  #if SHARKSSL_SSL_SERVER_CODE
+                  now_ccLen = (U32)writepmresr(o, (void*)0, registeredevent, paramnamed);
+                  #else
+                  now_ccLen = (U32)writepmresr(o, registeredevent, paramnamed);
+                  #endif
                   break;
                #endif
 
                #if SHARKSSL_TLS_1_2
                case SHARKSSL_PROTOCOL_MINOR(SHARKSSL_PROTOCOL_TLS_1_2):
                   #if SHARKSSL_SSL_SERVER_CODE
-                  now_ccLen = handleptrauth(o, (void*)0, registeredevent, paramnamed);
+                  now_ccLen = (U32)writepmresr(o, (void*)0, registeredevent, paramnamed);
                   #else
-                  now_ccLen = handleptrauth(o, registeredevent, paramnamed);
+                  now_ccLen = (U32)writepmresr(o, registeredevent, paramnamed);
                   #endif
                   break;
                #endif
@@ -7737,7 +7852,11 @@ SharkSslCon_RetVal configdword(SharkSslCon *o,
             goto updatereserved;
          }
 
-         if ((paramnamed) && (registerclass(o, registeredevent, paramnamed)))
+         #if SHARKSSL_SSL_SERVER_CODE
+         if ((paramnamed) && (writepmresr(o, (void*)0, registeredevent, paramnamed)))
+         #else
+         if ((paramnamed) && (writepmresr(o, registeredevent, paramnamed)))
+         #endif
          {
             SHARKDBG_PRINTF(("\045\163\072\040\045\144\012", __FILE__, __LINE__));
             goto regionfixed;
@@ -10343,7 +10462,7 @@ SHARKSSL_API void SharkSslMd5Ctx_finish(SharkSslMd5Ctx *registermcasp, U8 second
 }
 
 
-SHARKSSL_API int sharkssl_md5(const U8* alloccontroller, U16 len, U8 *secondaryentry)
+SHARKSSL_API int sharkssl_md5(const U8* alloccontroller, U32 len, U8 *secondaryentry)
 {
    #if SHARKSSL_CRYPTO_USE_HEAP
    SharkSslMd5Ctx *hctx = (SharkSslMd5Ctx *)baMalloc(claimresource(sizeof(SharkSslMd5Ctx)));
@@ -10357,7 +10476,7 @@ SHARKSSL_API int sharkssl_md5(const U8* alloccontroller, U16 len, U8 *secondarye
    #define hctx &registermcasp
    #endif
 
-   baAssert(alloccontroller);
+   baAssert(alloccontroller || (0 == len));
    baAssert(secondaryentry);
 
    SharkSslMd5Ctx_constructor(hctx);
@@ -10669,7 +10788,7 @@ SHARKSSL_API void SharkSslSha1Ctx_finish(SharkSslSha1Ctx *registermcasp, U8 seco
 }
 
 
-SHARKSSL_API int sharkssl_sha1(const U8 *alloccontroller, U16 len, U8 *secondaryentry)
+SHARKSSL_API int sharkssl_sha1(const U8 *alloccontroller, U32 len, U8 *secondaryentry)
 {
    #if SHARKSSL_CRYPTO_USE_HEAP
    SharkSslSha1Ctx *hctx = (SharkSslSha1Ctx *)baMalloc(claimresource(sizeof(SharkSslSha1Ctx)));
@@ -10684,7 +10803,7 @@ SHARKSSL_API int sharkssl_sha1(const U8 *alloccontroller, U16 len, U8 *secondary
    #define hctx &registermcasp
    #endif
 
-   baAssert(alloccontroller);
+   baAssert(alloccontroller || (0 == len));
    baAssert(secondaryentry);
 
    SharkSslSha1Ctx_constructor(hctx);
@@ -10981,7 +11100,7 @@ SHARKSSL_API void SharkSslSha256Ctx_finish(SharkSslSha256Ctx *registermcasp, U8 
 }
 
 
-SHARKSSL_API int sharkssl_sha256(const U8 *alloccontroller, U16 len, U8 *secondaryentry)
+SHARKSSL_API int sharkssl_sha256(const U8 *alloccontroller, U32 len, U8 *secondaryentry)
 {
    #if SHARKSSL_CRYPTO_USE_HEAP
    SharkSslSha256Ctx *hctx = (SharkSslSha256Ctx *)baMalloc(claimresource(sizeof(SharkSslSha256Ctx)));
@@ -10995,7 +11114,7 @@ SHARKSSL_API int sharkssl_sha256(const U8 *alloccontroller, U16 len, U8 *seconda
    #define hctx &registermcasp
    #endif
 
-   baAssert(alloccontroller);
+   baAssert(alloccontroller || (0 == len));
    baAssert(secondaryentry);
 
    SharkSslSha256Ctx_constructor(hctx);
@@ -11294,7 +11413,7 @@ SHARKSSL_API void SharkSslSha384Ctx_finish(SharkSslSha384Ctx *registermcasp, U8 
 
 
 #if SHARKSSL_USE_SHA_384
-SHARKSSL_API int sharkssl_sha384(const U8 *alloccontroller, U16 len, U8 *secondaryentry)
+SHARKSSL_API int sharkssl_sha384(const U8 *alloccontroller, U32 len, U8 *secondaryentry)
 {
    #if SHARKSSL_CRYPTO_USE_HEAP
    SharkSslSha384Ctx *hctx = (SharkSslSha384Ctx *)baMalloc(claimresource(sizeof(SharkSslSha384Ctx)));
@@ -11308,7 +11427,7 @@ SHARKSSL_API int sharkssl_sha384(const U8 *alloccontroller, U16 len, U8 *seconda
    #define hctx &registermcasp
    #endif
 
-   baAssert(alloccontroller);
+   baAssert(alloccontroller || (0 == len));
    baAssert(secondaryentry);
 
    SharkSslSha384Ctx_constructor(hctx);
@@ -11335,7 +11454,7 @@ SHARKSSL_API void SharkSslSha512Ctx_finish(SharkSslSha512Ctx *registermcasp, U8 
 }
 
 
-SHARKSSL_API int sharkssl_sha512(const U8 *alloccontroller, U16 len, U8 *secondaryentry)
+SHARKSSL_API int sharkssl_sha512(const U8 *alloccontroller, U32 len, U8 *secondaryentry)
 {
    #if SHARKSSL_CRYPTO_USE_HEAP
    SharkSslSha512Ctx *hctx = (SharkSslSha512Ctx *)baMalloc(claimresource(sizeof(SharkSslSha512Ctx)));
@@ -11349,7 +11468,7 @@ SHARKSSL_API int sharkssl_sha512(const U8 *alloccontroller, U16 len, U8 *seconda
    #define hctx &registermcasp
    #endif
 
-   baAssert(alloccontroller);
+   baAssert(alloccontroller || (0 == len));
    baAssert(secondaryentry);
 
    SharkSslSha512Ctx_constructor(hctx);
@@ -11442,9 +11561,9 @@ U16 sharkssl_getHashLen(U8 configwrite)
 }
 
 
-int sharkssl_hash(U8 *secondaryentry, U8 *alloccontroller, U16 len, U8 configwrite)
+int sharkssl_hash(U8 *secondaryentry, U8 *alloccontroller, U32 len, U8 configwrite)
 {
-   if (alloccontroller && secondaryentry)
+   if (secondaryentry && (alloccontroller || (0 == len)))  
    {
       switch (configwrite)
       {
@@ -11680,7 +11799,7 @@ SHARKSSL_API void  SharkSslHMACCtx_finish(SharkSslHMACCtx *registermcasp, U8 *cf
 }
 
 
-SHARKSSL_API int sharkssl_HMAC(const U8 configwrite, const U8 *alloccontroller, U16 len, const U8 *sourcerouting, U16 creategroup, U8 *secondaryentry)
+SHARKSSL_API int sharkssl_HMAC(const U8 configwrite, const U8 *alloccontroller, U32 len, const U8 *sourcerouting, U16 creategroup, U8 *secondaryentry)
 {
    #if SHARKSSL_CRYPTO_USE_HEAP
    SharkSslHMACCtx *hctx = (SharkSslHMACCtx *)baMalloc(claimresource(sizeof(SharkSslHMACCtx)));
@@ -11694,8 +11813,8 @@ SHARKSSL_API int sharkssl_HMAC(const U8 configwrite, const U8 *alloccontroller, 
    #define hctx &registermcasp
    #endif
 
-   baAssert(alloccontroller);
-   baAssert(sourcerouting);
+   baAssert(alloccontroller || (0 == len));
+   baAssert(sourcerouting  || (0 == creategroup));
    baAssert(creategroup);
    baAssert(secondaryentry);
 
@@ -11902,7 +12021,7 @@ SHARKSSL_API void SharkSslPoly1305Ctx_finish(SharkSslPoly1305Ctx *registermcasp,
 }
 
 
-SHARKSSL_API int sharkssl_poly1305(const U8 *alloccontroller, U16 len, U8 *secondaryentry, const U8 sourcerouting[32])
+SHARKSSL_API int sharkssl_poly1305(const U8 *alloccontroller, U32 len, U8 *secondaryentry, const U8 sourcerouting[32])
 {
    #if SHARKSSL_CRYPTO_USE_HEAP
    SharkSslPoly1305Ctx *hctx = (SharkSslPoly1305Ctx *)baMalloc(claimresource(sizeof(SharkSslPoly1305Ctx)));
@@ -11916,7 +12035,7 @@ SHARKSSL_API int sharkssl_poly1305(const U8 *alloccontroller, U16 len, U8 *secon
    #define hctx &registermcasp
    #endif
 
-   baAssert(alloccontroller);
+   baAssert(alloccontroller || (0 == len));
    baAssert(len);
    baAssert(secondaryentry);
    baAssert(sourcerouting);
@@ -13013,7 +13132,7 @@ SHARKSSL_API void SharkSslAesCtx_decrypt(SharkSslAesCtx *registermcasp, const U8
 
 #if SHARKSSL_ENABLE_AES_CBC
 SHARKSSL_API void SharkSslAesCtx_cbc_encrypt(SharkSslAesCtx *registermcasp, U8 vect[16],
-                                             const U8 *updatecause, U8 *enablehazard, U16 len)
+                                             const U8 *updatecause, U8 *enablehazard, U32 len)
 {
    U8 *q = vect;
 
@@ -13060,7 +13179,7 @@ SHARKSSL_API void SharkSslAesCtx_cbc_encrypt(SharkSslAesCtx *registermcasp, U8 v
 
 
 SHARKSSL_API void SharkSslAesCtx_cbc_decrypt(SharkSslAesCtx *registermcasp, U8 vect[16],
-                                             const U8 *updatecause, U8 *enablehazard, U16 len)
+                                             const U8 *updatecause, U8 *enablehazard, U32 len)
 {
    U8 rememberstate[16];
    const U8 *q;
@@ -13137,7 +13256,7 @@ SHARKSSL_API void SharkSslAesCtx_cbc_decrypt(SharkSslAesCtx *registermcasp, U8 v
 
 #if (SHARKSSL_ENABLE_AES_CTR_MODE)  
 SHARKSSL_API void SharkSslAesCtx_ctr_mode(SharkSslAesCtx *registermcasp, U8 ctr[16],
-                                          const U8 *updatecause, U8 *enablehazard, U16 len)
+                                          const U8 *updatecause, U8 *enablehazard, U32 len)
 {
    U8 sossirecalc[16], k;
 
@@ -13422,7 +13541,7 @@ SHARKSSL_API void SharkSslAesGcmCtx_constructor(SharkSslAesGcmCtx *registermcasp
 static int pcmciaregister(SharkSslAesGcmCtx *registermcasp,
                                      const U8 vect[12], U8 tag[16],
                                      const U8 *pmuv3event, U16 authlen,
-                                     const U8 *updatecause, U8 *enablehazard, U16 len,
+                                     const U8 *updatecause, U8 *enablehazard, U32 len,
                                      SharkSslAesCtx_Type rightsvalid)
 {
    U8 remapiospace[16], sossirecalc[16], tagi[16];
@@ -13535,7 +13654,7 @@ static int pcmciaregister(SharkSslAesGcmCtx *registermcasp,
 SHARKSSL_API int SharkSslAesGcmCtx_encrypt(SharkSslAesGcmCtx *registermcasp,
                                            const U8 vect[12], U8 panickernel[16],
                                            const U8 *pmuv3event, U16 authlen,
-                                           const U8 *updatecause, U8 *enablehazard, U16 len)
+                                           const U8 *updatecause, U8 *enablehazard, U32 len)
 {
    return pcmciaregister(registermcasp, vect, panickernel, pmuv3event, authlen, updatecause, enablehazard, len, SharkSslAesCtx_Encrypt);
 }
@@ -13544,7 +13663,7 @@ SHARKSSL_API int SharkSslAesGcmCtx_encrypt(SharkSslAesGcmCtx *registermcasp,
 SHARKSSL_API int SharkSslAesGcmCtx_decrypt(SharkSslAesGcmCtx *registermcasp,
                                            const U8 vect[12], U8 directionoutput[16],
                                            const U8 *pmuv3event, U16 authlen,
-                                           U8 *updatecause, U8 *enablehazard, U16 len)
+                                           U8 *updatecause, U8 *enablehazard, U32 len)
 {
    return pcmciaregister(registermcasp, vect, directionoutput, pmuv3event, authlen, updatecause, enablehazard, len, SharkSslAesCtx_Decrypt);
 }
@@ -13568,7 +13687,7 @@ SHARKSSL_API void SharkSslAesCcmCtx_constructor(SharkSslAesCcmCtx *registermcasp
 static int modifyparam(SharkSslAesCcmCtx *registermcasp,
                                      const U8 vect[12], U8 *tag,
                                      const U8 *pmuv3event, U16 authlen,
-                                     const U8 *updatecause, U8 *enablehazard, U16 len,
+                                     const U8 *updatecause, U8 *enablehazard, U32 len,
                                      SharkSslAesCtx_Type rightsvalid)
 {
    U8 remapiospace[16], sossirecalc[16], tagi[16];
@@ -13702,7 +13821,7 @@ static int modifyparam(SharkSslAesCcmCtx *registermcasp,
 SHARKSSL_API int SharkSslAesCcmCtx_encrypt(SharkSslAesCcmCtx *registermcasp,
                                            const U8 vect[12], U8 *panickernel,
                                            const U8 *pmuv3event, U16 authlen,
-                                           const U8 *updatecause, U8 *enablehazard, U16 len)
+                                           const U8 *updatecause, U8 *enablehazard, U32 len)
 {
    return modifyparam(registermcasp, vect, panickernel, pmuv3event, authlen, updatecause, enablehazard, len, SharkSslAesCtx_Encrypt);
 }
@@ -13711,7 +13830,7 @@ SHARKSSL_API int SharkSslAesCcmCtx_encrypt(SharkSslAesCcmCtx *registermcasp,
 SHARKSSL_API int SharkSslAesCcmCtx_decrypt(SharkSslAesCcmCtx *registermcasp,
                                            const U8 vect[12], U8 *directionoutput,
                                            const U8 *pmuv3event, U16 authlen,
-                                           const U8 *updatecause, U8 *enablehazard, U16 len)
+                                           const U8 *updatecause, U8 *enablehazard, U32 len)
 {
    return modifyparam(registermcasp, vect, directionoutput, pmuv3event, authlen, updatecause, enablehazard, len, SharkSslAesCtx_Decrypt);
 }
@@ -14258,7 +14377,7 @@ static int deltacamera(SharkSslParseASN1 *o, SharkSslCertDN *dn)
 
 
 #if ((SHARKSSL_SSL_CLIENT_CODE && (SHARKSSL_ENABLE_RSA || SHARKSSL_ENABLE_ECDSA)) || \
-     (SHARKSSL_SSL_SERVER_CODE) || (SHARKSSL_ENABLE_CSR_SIGNING))
+     (SHARKSSL_SSL_SERVER_CODE) || (SHARKSSL_ENABLE_CSR_SIGNING) || (SHARKSSL_SSL_TOOLS_CODE))
 
 int spromregister(SharkSslCertParam *o, const U8 *p, U32 len, U8 *doublefnmul)
 {
@@ -14983,10 +15102,19 @@ SharkSslCert removerecursive(SharkSslCertEnum *o)
             #if SHARKSSL_ENABLE_RSA
             if (machinekexec(setpropinplace))
             {
+               #if 0
                baAssert(chargeerror == supportedvector(chargeerror));
                baAssert((chargeerror <= 0x3FFF) && (0 == (chargeerror & 0x01)));
-               o->cert += (U16)(chargeerror << 2);
-               o->cert -= (U16)(chargeerror >> 1);
+               #else  
+               if ((chargeerror > 0x3FFF) || (chargeerror & 0x01))
+               {
+                  o->cert = NULL;
+               }
+               #endif 
+               {
+                  o->cert += (U16)(chargeerror << 2);
+                  o->cert -= (U16)(chargeerror >> 1);
+               }
             }
             #if SHARKSSL_USE_ECC
             else
@@ -14996,8 +15124,18 @@ SharkSslCert removerecursive(SharkSslCertEnum *o)
             if (machinereboot(setpropinplace))
             {
                chargeerror = attachdevice(chargeerror);
+               #if 0
                baAssert((chargeerror < 0x00FF) && (0 == (chargeerror & 0x01)));
-               o->cert += (U16)(chargeerror << 1);
+               #else  
+               if ((chargeerror >= 0x00FF) || (chargeerror & 0x01))
+               {
+                  o->cert = NULL;
+               }
+               else
+               #endif
+               {
+                  o->cert += (U16)(chargeerror << 1);
+               }
             }
             #endif
             else
@@ -15425,7 +15563,7 @@ static sharkssl_ECDSA_RetVal registerboard(SharkSslECDSAParam *audioshutdown, U8
 #endif
 
 
-#if (((SHARKSSL_SSL_CLIENT_CODE && SHARKSSL_ENABLE_CLIENT_AUTH) || (SHARKSSL_SSL_SERVER_CODE) || \
+#if (((SHARKSSL_SSL_CLIENT_CODE && SHARKSSL_ENABLE_CLIENT_AUTH) || (SHARKSSL_SSL_SERVER_CODE) || (SHARKSSL_SSL_TOOLS_CODE) || \
      (SHARKSSL_ENABLE_CSR_SIGNING) || (SHARKSSL_ENABLE_CSR_CREATION)) && \
      (SHARKSSL_ENABLE_DHE_RSA || SHARKSSL_ENABLE_ECDHE_RSA || SHARKSSL_ENABLE_ECDHE_ECDSA))
 int checkactions(SharkSslSignParam *o)
@@ -15669,7 +15807,14 @@ U16 interrupthandler(SharkSslCertKey *disableclock, SharkSslCert kernelvaddr)
 
 
 
-U16  SharkSslCert_vectSize_keyType(const SharkSslCert kernelvaddr, U8 *earlyconsole)
+SHARKSSL_API U16 SharkSslKey_vectSize(const SharkSslKey sourcerouting)
+{
+   return SharkSslKey_vectSize_keyInfo(sourcerouting, (U8*)0, (U8*)0, (U8**)0, (U16*)0, (U8**)0, (U16*)0);
+}
+
+
+
+SHARKSSL_API U16 SharkSslKey_vectSize_keyInfo(const SharkSslKey sourcerouting, U8 *earlyconsole, U8 *isKeyPrivate, U8 **d1, U16 *d1Len, U8 **d2, U16 *d2Len)
 {
    SharkSslCertKey disableclock;
    U16 icachealiases;
@@ -15678,19 +15823,39 @@ U16  SharkSslCert_vectSize_keyType(const SharkSslCert kernelvaddr, U8 *earlycons
    #endif
 
    
-   icachealiases = interrupthandler(&disableclock, kernelvaddr);
+   icachealiases = interrupthandler(&disableclock, (SharkSslCert)sourcerouting);
    if (icachealiases)
    {
       #if SHARKSSL_ENABLE_CERT_CHAIN
       nc0 = monadiccheck(disableclock.expLen);
       #endif
       
+      if (isKeyPrivate)
+      {
+         *isKeyPrivate = coupledexynos(disableclock.expLen) ? 0 : 1;
+      }
+      if (d1)
+      {
+         *d1 = disableclock.mod;  
+      }
       icachealiases += 4 + mousethresh(disableclock.expLen);
       if (machinekexec(disableclock.expLen))
       {
          if (earlyconsole)
          {
             *earlyconsole = SHARKSSL_KEYTYPE_RSA;
+         }
+         if (d1Len)
+         {
+            *d1Len = supportedvector(disableclock.modLen);
+         }
+         if (d2Len)
+         {
+            *d2Len = mousethresh(disableclock.expLen);
+         }
+         if (d2)
+         {
+            *d2 = disableclock.exp;
          }
          
          icachealiases += supportedvector(disableclock.modLen);
@@ -15702,12 +15867,24 @@ U16  SharkSslCert_vectSize_keyType(const SharkSslCert kernelvaddr, U8 *earlycons
       }
       else if (machinereboot(disableclock.expLen))
       {
+         
+         icachealiases += (U16)(2 * attachdevice(disableclock.modLen));
          if (earlyconsole)
          {
             *earlyconsole = SHARKSSL_KEYTYPE_EC;
          }
-         
-         icachealiases += (U16)(2 * attachdevice(disableclock.modLen));
+         if (d1Len)
+         {
+            *d1Len = attachdevice(disableclock.modLen);
+         }
+         if (d2Len)
+         {
+            *d2Len = attachdevice(disableclock.modLen);
+         }
+         if (d2)
+         {
+            *d2 = disableclock.mod + attachdevice(disableclock.modLen);  
+         }
       }
       else
       {
@@ -15716,7 +15893,7 @@ U16  SharkSslCert_vectSize_keyType(const SharkSslCert kernelvaddr, U8 *earlycons
       #if SHARKSSL_ENABLE_CERT_CHAIN
       if (icachealiases && nc0)  
       {
-         U8 *postcoreinitcall = (U8*)(&kernelvaddr[icachealiases]);
+         U8 *postcoreinitcall = (U8*)(&sourcerouting[icachealiases]);
          while (nc0--)
          {
             U16 ebasecpunum = SharkSslCert_len((SharkSslCert)postcoreinitcall);
@@ -15734,13 +15911,6 @@ U16  SharkSslCert_vectSize_keyType(const SharkSslCert kernelvaddr, U8 *earlycons
       #endif
    }
    return icachealiases;
-}
-
-
-
-SHARKSSL_API U16 SharkSslKey_vectSize(const SharkSslKey sourcerouting)
-{
-   return SharkSslCert_vectSize_keyType((SharkSslCert)sourcerouting, (U8*)0);
 }
 
 
@@ -15792,7 +15962,13 @@ U16 setupboard(SharkSslCert kernelvaddr)
 
    while (kernelvaddr != NULL)
    {
-      len += 3 + SharkSslCertEnum_getCertLength(&cEnum);
+      U16 driverunregister = SharkSslCertEnum_getCertLength(&cEnum);
+      if (driverunregister == (U16)-1)  
+      {
+         len = 0;
+         break;
+      }
+      len += 3 + driverunregister;
       kernelvaddr = removerecursive(&cEnum);
    }
 
@@ -16981,6 +17157,14 @@ SHARKSSL_API SharkSslKey sharkssl_PEM_extractPublicKey_ext(const char *allowresi
    if (allowresize)
    {
       
+      buttontable = NULL;
+      pxafbmodes = (U16)sharkssl_PEM(NULL, allowresize, NULL, (SharkSslCert*)&buttontable);
+      if ((SHARKSSL_PEM_OK == pxafbmodes) || (SHARKSSL_PEM_OK_PUBLIC == pxafbmodes))
+      {
+         *earlyconsole = (buttontable[4] & mutantchannel);  
+         return buttontable;
+      }
+      
       cbeg = (char*)sharkStrstr(allowresize, "\055\055\055\055\055\102\105\107\111\116");
       if (cbeg)
       {
@@ -17357,7 +17541,7 @@ SHARKSSL_API U16 SharkSslRSAKey_size(SharkSslRSAKey sourcerouting)
 
 typedef int (*SharkSslCertKey_RSA_func)(const SharkSslCertKey*, U16, U8*, U8*, U8);
 
-static sharkssl_RSA_RetVal switchcompletion(SharkSslCertKey_RSA_func orderarray, SharkSslRSAKey sourcerouting, U16 len, U8 *in, U8 *out, U8 seepromprobe)
+static sharkssl_RSA_RetVal switchcompletion(SharkSslCertKey_RSA_func orderarray, SharkSslRSAKey sourcerouting, int len, const U8 *in, U8 *out, int seepromprobe)
 {
    SharkSslCertKey disableclock;
 
@@ -17371,19 +17555,99 @@ static sharkssl_RSA_RetVal switchcompletion(SharkSslCertKey_RSA_func orderarray,
       return SHARKSSL_RSA_WRONG_KEY_FORMAT;
    }
 
-   return (sharkssl_RSA_RetVal)orderarray(&disableclock, len, in, out, seepromprobe);
+   return (sharkssl_RSA_RetVal)orderarray(&disableclock, (U16)len, (U8*)in, out, (U8)seepromprobe);
 }
 
-
-SHARKSSL_API sharkssl_RSA_RetVal sharkssl_RSA_public_encrypt(U16 len, U8 *in, U8 *out, SharkSslRSAKey sourcerouting, U8 seepromprobe)
+SHARKSSL_API sharkssl_RSA_RetVal sharkssl_RSA_public_encrypt(SharkSslRSAKey setupreset, const U8 *in, int len, U8 *out, int seepromprobe)
 {
-   return switchcompletion(omap3430common, sourcerouting, len, in, out, seepromprobe);
+   return switchcompletion(omap3430common, setupreset, len, in, out, seepromprobe);
 }
 
 
-SHARKSSL_API sharkssl_RSA_RetVal sharkssl_RSA_private_decrypt(U16 len, U8 *in, U8 *out, SharkSslRSAKey resumeenabler, U8 seepromprobe)
+SHARKSSL_API sharkssl_RSA_RetVal sharkssl_RSA_private_decrypt(SharkSslRSAKey resumeenabler, const U8 *in, int len, U8 *out, int seepromprobe)
 {
    return switchcompletion(writemessage, resumeenabler, len, in, out, seepromprobe);
+}
+
+
+SHARKSSL_API sharkssl_RSA_RetVal sharkssl_RSA_private_encrypt(SharkSslRSAKey resumeenabler, const U8 *in, int len, U8 *out, int seepromprobe)
+{
+   return switchcompletion(clockaccess, resumeenabler, len, in, out, seepromprobe);
+}
+
+
+SHARKSSL_API sharkssl_RSA_RetVal sharkssl_RSA_public_decrypt(SharkSslRSAKey setupreset, const U8 *in, int len, U8 *out, int seepromprobe)
+{
+   return switchcompletion(handleguest, setupreset, len, in, out, seepromprobe);
+}
+
+
+
+SHARKSSL_API sharkssl_RSA_RetVal sharkssl_RSA_PKCS1V1_5_sign_hash(SharkSslRSAKey resumeenabler, U8 *sig, U16 *platformconfig, const U8 *chargerplatform, U8 configwrite)
+{
+   SharkSslSignParam sgp;
+   SharkSslCertKey disableclock;
+   int ret;
+   U16 ftraceupdate = sharkssl_getHashLen(configwrite);
+
+   if ((0 == ftraceupdate) || (NULL == sig) || (NULL == chargerplatform) || (NULL == platformconfig))
+   {
+      return SHARKSSL_RSA_WRONG_PARAMETERS;  
+   }
+   if ((0 == interrupthandler(&disableclock, resumeenabler)) || !(machinekexec(disableclock.expLen)))
+   {
+      return SHARKSSL_RSA_WRONG_KEY_FORMAT;
+   }
+   if (coupledexynos(disableclock.expLen))
+   {
+      return SHARKSSL_RSA_KEY_NOT_PRIVATE;
+   }
+
+   sgp.pCertKey = &disableclock;
+   memcpy(sgp.signature.hash, chargerplatform, ftraceupdate);
+   sgp.signature.hashAlgo = configwrite;
+   sgp.signature.signature = sig;
+   sgp.signature.signatureAlgo = entryearly;
+   ret = checkactions(&sgp);
+   *platformconfig = sgp.signature.signLen;
+
+   if (0 != ret)
+   {
+      return SHARKSSL_RSA_WRONG_SIGNATURE;
+   }
+
+   return SHARKSSL_RSA_OK;
+}
+
+
+
+SHARKSSL_API sharkssl_RSA_RetVal sharkssl_RSA_PKCS1V1_5_verify_hash(SharkSslRSAKey setupreset, U8 *sig, U16 platformconfig, const U8 *chargerplatform, U8 configwrite)
+{
+   SharkSslSignParam sgp;
+   SharkSslCertKey disableclock;
+   U16 ftraceupdate = sharkssl_getHashLen(configwrite);
+
+   if ((0 == ftraceupdate) || (NULL == sig)  || (NULL == chargerplatform) || (0 == platformconfig))
+   {
+      return SHARKSSL_RSA_WRONG_PARAMETERS;  
+   }
+   if ((0 == interrupthandler(&disableclock, setupreset)) || !(machinekexec(disableclock.expLen)))
+   {
+      return SHARKSSL_RSA_WRONG_KEY_FORMAT;
+   }
+
+   sgp.pCertKey = &disableclock;
+   memcpy(sgp.signature.hash, chargerplatform, ftraceupdate);
+   sgp.signature.hashAlgo = configwrite;
+   sgp.signature.signature = sig;
+   sgp.signature.signatureAlgo = entryearly;
+   sgp.signature.signLen = platformconfig;
+   if (0 != systemcapabilities(&sgp))
+   {
+      return SHARKSSL_RSA_VERIFICATION_FAIL;
+   }
+
+   return SHARKSSL_RSA_OK;
 }
 
 
@@ -17435,13 +17699,17 @@ static void aliasstart(U8 *pciercxcfg448, U16 allocskcipher, U8 *src, U16 consol
 }
 
 
-SHARKSSL_API sharkssl_RSA_RetVal sharkssl_RSA_private_decrypt_OAEP(U16 len, U8 *in, U8 *out, SharkSslRSAKey resumeenabler, U8 configwrite, const char *clkdmoperations, U16 auxdatalookup)
+SHARKSSL_API sharkssl_RSA_RetVal sharkssl_RSA_private_decrypt_OAEP(SharkSslRSAKey resumeenabler, U8 *in, int len, U8 configwrite, U8 *out, const char *clkdmoperations, U16 auxdatalookup)
 {
    int ret;
    U16 ftraceupdate, i;
 
    ftraceupdate = sharkssl_getHashLen(configwrite);
-   ret = (int)switchcompletion(writemessage, resumeenabler, len, in, in, SHARKSSL_RSA_NO_PADDING);
+   if ((U32)len > 0x0000FFFF)
+   {
+      return SHARKSSL_RSA_INPUT_DATA_LENGTH_TOO_BIG;
+   }
+   ret = (int)switchcompletion(writemessage, resumeenabler, (U16)len, in, in, SHARKSSL_RSA_NO_PADDING);
    if (ftraceupdate == 0)
    {
       ret = SHARKSSL_RSA_WRONG_PARAMETERS;  
@@ -17457,7 +17725,10 @@ SHARKSSL_API sharkssl_RSA_RetVal sharkssl_RSA_private_decrypt_OAEP(U16 len, U8 *
 
       aliasstart(&in[1], ftraceupdate, &in[1 + ftraceupdate], (U16)ret - ftraceupdate - 1, configwrite);
       aliasstart(&in[ftraceupdate + 1], (U16)ret - ftraceupdate - 1, &in[1], ftraceupdate, configwrite);
-      sharkssl_hash(logicstate, (U8*)clkdmoperations, auxdatalookup, configwrite);
+      if (0 != sharkssl_hash(logicstate, (U8*)clkdmoperations, auxdatalookup, configwrite))
+      {
+         return SHARKSSL_RSA_WRONG_LABEL_LENGTH;
+      }
 
       
       ptr = in;
@@ -17499,7 +17770,7 @@ SHARKSSL_API sharkssl_RSA_RetVal sharkssl_RSA_private_decrypt_OAEP(U16 len, U8 *
 }
 
 
-SHARKSSL_API sharkssl_RSA_RetVal sharkssl_RSA_public_encrypt_OAEP(U16 len, const U8 *in, U8 *out, SharkSslRSAKey setupreset, U8 configwrite, const char *clkdmoperations, U16 auxdatalookup)
+SHARKSSL_API sharkssl_RSA_RetVal sharkssl_RSA_public_encrypt_OAEP(SharkSslRSAKey setupreset, const U8 *in, int len, U8 configwrite, U8 *out, const char *clkdmoperations, U16 auxdatalookup)
 {
    int ret;
    U16 ftraceupdate, h2Len;
@@ -17519,7 +17790,7 @@ SHARKSSL_API sharkssl_RSA_RetVal sharkssl_RSA_public_encrypt_OAEP(U16 len, const
    {
       ret = SHARKSSL_RSA_WRONG_KEY_LENGTH;
    }
-   else if (len > (ret - h2Len))
+   else if (((U32)len > 0x0000FFFF) || ((U16)len > (ret - h2Len)))
    {
       ret = SHARKSSL_RSA_INPUT_DATA_LENGTH_TOO_BIG;
    }
@@ -17529,9 +17800,12 @@ SHARKSSL_API sharkssl_RSA_RetVal sharkssl_RSA_public_encrypt_OAEP(U16 len, const
       *ptr++ = 0x00;
       sharkssl_rng(ptr, ftraceupdate);
       ptr += ftraceupdate;
-      sharkssl_hash(ptr, (U8*)clkdmoperations, auxdatalookup, configwrite);
+      if (0 != sharkssl_hash(ptr, (U8*)clkdmoperations, auxdatalookup, configwrite))
+      {
+         return SHARKSSL_RSA_WRONG_LABEL_LENGTH;
+      }
       ptr += ftraceupdate;
-      h2Len = (U16)ret - h2Len - len;
+      h2Len = (U16)ret - h2Len - (U16)len;
       memset(ptr, 0, h2Len);
       ptr += h2Len;
       *ptr++ = 0x01;
@@ -17544,18 +17818,6 @@ SHARKSSL_API sharkssl_RSA_RetVal sharkssl_RSA_public_encrypt_OAEP(U16 len, const
    return (sharkssl_RSA_RetVal)ret;
 }
 #endif  
-
-
-SHARKSSL_API sharkssl_RSA_RetVal sharkssl_RSA_private_encrypt(U16 len, U8 *in, U8 *out, SharkSslRSAKey resumeenabler, U8 seepromprobe)
-{
-   return switchcompletion(clockaccess, resumeenabler, len, in, out, seepromprobe);
-}
-
-
-SHARKSSL_API sharkssl_RSA_RetVal sharkssl_RSA_public_decrypt(U16 len, U8 *in, U8 *out, SharkSslRSAKey sourcerouting, U8 seepromprobe)
-{
-   return switchcompletion(handleguest, sourcerouting, len, in, out, seepromprobe);
-}
 #endif  
 #endif  
 
@@ -17624,13 +17886,14 @@ SHARKSSL_API U16 sharkssl_ECDSA_siglen(SharkSslECCKey resumeenabler)
 }
 
 
-SHARKSSL_API sharkssl_ECDSA_RetVal sharkssl_ECDSA_sign_hash(SharkSslECCKey resumeenabler, U8 *sig, U16 *platformconfig, U8 *chargerplatform, U8 clearscratchpad)
+SHARKSSL_API sharkssl_ECDSA_RetVal sharkssl_ECDSA_sign_hash(SharkSslECCKey resumeenabler, U8 *sig, U16 *platformconfig, const U8 *chargerplatform, U8 configwrite)
+#if 0  
 {
    SharkSslCertKey disableclock;
    SharkSslECDSAParam audioshutdown;
    sharkssl_ECDSA_RetVal ret;
 
-   if ((NULL == sig) || (NULL == chargerplatform) || (0 == clearscratchpad))
+   if ((NULL == sig) || (NULL == chargerplatform) || (NULL == platformconfig)) 
    {
       return SHARKSSL_ECDSA_WRONG_PARAMETERS;
    }
@@ -17643,9 +17906,14 @@ SHARKSSL_API sharkssl_ECDSA_RetVal sharkssl_ECDSA_sign_hash(SharkSslECCKey resum
       return SHARKSSL_ECDSA_KEY_NOT_PRIVATE;
    }
 
+   audioshutdown.hashLen = sharkssl_getHashLen(configwrite);
+   if (0 == audioshutdown.hashLen)
+   {
+      return SHARKSSL_ECDSA_WRONG_PARAMETERS;
+   }
+
    audioshutdown.curveType = wakeupenable(disableclock.modLen);
-   audioshutdown.hash = chargerplatform;
-   audioshutdown.hashLen = clearscratchpad;
+   audioshutdown.hash = (U8*)chargerplatform;
    audioshutdown.key = disableclock.exp;
    audioshutdown.keyLen = mousethresh(disableclock.expLen);
 
@@ -17658,10 +17926,47 @@ SHARKSSL_API sharkssl_ECDSA_RetVal sharkssl_ECDSA_sign_hash(SharkSslECCKey resum
 
    return SHARKSSL_ECDSA_OK;
 }
+#else
+{
+   SharkSslSignParam sgp;
+   SharkSslCertKey disableclock;
+   int ret;
+   U16 ftraceupdate = sharkssl_getHashLen(configwrite);
+
+   if ((0 == ftraceupdate) || (NULL == sig) || (NULL == chargerplatform) || (NULL == platformconfig))
+   {
+      return SHARKSSL_ECDSA_WRONG_PARAMETERS;  
+   }
+   if ((0 == interrupthandler(&disableclock, resumeenabler)) || !(machinereboot(disableclock.expLen)))
+   {
+      return SHARKSSL_ECDSA_WRONG_KEY_FORMAT;
+   }
+   if (coupledexynos(disableclock.expLen))
+   {
+      return SHARKSSL_ECDSA_KEY_NOT_PRIVATE;
+   }
+
+   sgp.pCertKey = &disableclock;
+   memcpy(sgp.signature.hash, chargerplatform, ftraceupdate);
+   sgp.signature.hashAlgo = configwrite;
+   sgp.signature.signature = sig;
+   sgp.signature.signatureAlgo = accessactive;
+   ret = checkactions(&sgp);
+   *platformconfig = sgp.signature.signLen;
+
+   if (0 != ret)
+   {
+      return SHARKSSL_ECDSA_WRONG_SIGNATURE;
+   }
+
+   return SHARKSSL_ECDSA_OK;
+}
+#endif  
 #endif
 
 
-SHARKSSL_API sharkssl_ECDSA_RetVal sharkssl_ECDSA_verify_hash(SharkSslECCKey setupreset, U8 *sig, U16 platformconfig, U8 *chargerplatform, U8 clearscratchpad)
+SHARKSSL_API sharkssl_ECDSA_RetVal sharkssl_ECDSA_verify_hash(SharkSslECCKey setupreset, U8 *sig, U16 platformconfig, const U8 *chargerplatform, U8 configwrite)
+#if 0  
 {
    U8 kexecprepare[claimresource(SHARKSSL_MAX_ECC_POINTLEN)];
    U8 stackoverflow[claimresource(SHARKSSL_MAX_ECC_POINTLEN)];
@@ -17670,7 +17975,7 @@ SHARKSSL_API sharkssl_ECDSA_RetVal sharkssl_ECDSA_verify_hash(SharkSslECCKey set
    SharkSslECDSAParam audioshutdown;
    int ret;
 
-   if ((NULL == sig) || (NULL == chargerplatform) || (0 == clearscratchpad) || (0 == platformconfig))
+   if ((NULL == sig) || (NULL == chargerplatform) || (0 == configwrite) || (0 == platformconfig))
    {
       return SHARKSSL_ECDSA_WRONG_PARAMETERS;
    }
@@ -17678,15 +17983,22 @@ SHARKSSL_API sharkssl_ECDSA_RetVal sharkssl_ECDSA_verify_hash(SharkSslECCKey set
    {
       return SHARKSSL_ECDSA_WRONG_KEY_FORMAT;
    }
+   #if 0
    if (!(coupledexynos(disableclock.expLen)))
    {
       
       return SHARKSSL_ECDSA_KEY_NOT_PUBLIC;
    }
+   #endif
+
+   audioshutdown.hashLen = sharkssl_getHashLen(configwrite);
+   if (0 == audioshutdown.hashLen)
+   {
+      return SHARKSSL_ECDSA_WRONG_PARAMETERS;
+   }
 
    audioshutdown.curveType = wakeupenable(disableclock.modLen);
-   audioshutdown.hash = chargerplatform;
-   audioshutdown.hashLen = clearscratchpad;
+   audioshutdown.hash = (U8*)chargerplatform;
    audioshutdown.key = disableclock.mod;
    audioshutdown.keyLen = attachdevice(disableclock.modLen);
 
@@ -17741,6 +18053,35 @@ SHARKSSL_API sharkssl_ECDSA_RetVal sharkssl_ECDSA_verify_hash(SharkSslECCKey set
 
    return SHARKSSL_ECDSA_OK;
 }
+#else
+{
+   SharkSslSignParam sgp;
+   SharkSslCertKey disableclock;
+   U16 ftraceupdate = sharkssl_getHashLen(configwrite);
+
+   if ((0 == ftraceupdate) || (NULL == sig)  || (NULL == chargerplatform) || (0 == platformconfig))
+   {
+      return SHARKSSL_ECDSA_WRONG_PARAMETERS;  
+   }
+   if ((0 == interrupthandler(&disableclock, setupreset)) || !(machinereboot(disableclock.expLen)))
+   {
+      return SHARKSSL_ECDSA_WRONG_KEY_FORMAT;
+   }
+
+   sgp.pCertKey = &disableclock;
+   memcpy(sgp.signature.hash, chargerplatform, ftraceupdate);
+   sgp.signature.hashAlgo = configwrite;
+   sgp.signature.signature = sig;
+   sgp.signature.signatureAlgo = accessactive;
+   sgp.signature.signLen = platformconfig;
+   if (0 != systemcapabilities(&sgp))
+   {
+      return SHARKSSL_ECDSA_VERIFICATION_FAIL;
+   }
+
+   return SHARKSSL_ECDSA_OK;
+}
+#endif  
 #endif  
 #endif  
 
@@ -21014,8 +21355,8 @@ static void clusterpowerdown(U8 *commonalloc)
       n--;
    }
    #else  
-   baAssert(8 == SHARKSSL_SEQ_NUM_LEN);
    U32 seq;
+   baAssert(8 == SHARKSSL_SEQ_NUM_LEN);
 
    read64uint32(seq, commonalloc, 4);
    seq++;

@@ -10,7 +10,7 @@
  ****************************************************************************
  *   PROGRAM MODULE
  *
- *   $Id: SharkSSLTools.h 5390 2023-02-21 00:59:31Z wini $
+ *   $Id: SharkSSLTools.h 5638 2025-03-02 21:52:54Z gianluca $
  *
  *   COPYRIGHT:  Real Time Logic LLC, 2010 - 2023
  *
@@ -103,10 +103,12 @@
 #if 1
 #define SHARKSSL_SSL_CLIENT_CODE       1
 #define SHARKSSL_SSL_SERVER_CODE       1
+#define SHARKSSL_SSL_TOOLS_CODE        1
 #include "../src/SharkSSL.c"
 #else
 #define SHARKSSL_SSL_CLIENT_CODE       0
 #define SHARKSSL_SSL_SERVER_CODE       0
+#define SHARKSSL_SSL_TOOLS_CODE        1
 #include "../src/SharkSslASN1.c"
 #include "../src/SharkSslCert.c"
 #include "../src/SharkSslCrypto.c"

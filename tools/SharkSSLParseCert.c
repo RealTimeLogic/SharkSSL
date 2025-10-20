@@ -10,7 +10,7 @@
  ****************************************************************************
  *   PROGRAM MODULE
  *
- *   $Id: SharkSSLParseCert.c 4563 2020-09-07 09:26:17Z gianluca $
+ *   $Id: SharkSSLParseCert.c 5637 2025-03-02 21:51:18Z gianluca $
  *
  *   COPYRIGHT:  Real Time Logic LLC, 2010 - 2018
  *
@@ -63,7 +63,7 @@ int main (int argc, char **argv)
    U8 cert_type;
 
    initVars();
-   printRev("$Id: SharkSSLParseCert.c 4563 2020-09-07 09:26:17Z gianluca $");
+   printRev("$Id: SharkSSLParseCert.c 5637 2025-03-02 21:51:18Z gianluca $");
 
    if (argc < 3)
    {
@@ -157,7 +157,7 @@ int main (int argc, char **argv)
       return 1;
    }
    
-   vect_size = SharkSslCert_vectSize_keyType(sharkSslCert, &cert_type);
+   vect_size = SharkSslCert_vectSize_keyInfo(sharkSslCert, &cert_type, NULL, NULL, NULL, NULL, NULL);
    if (vect_size > 0) 
    {
       if (SHARKSSL_KEYTYPE_RSA == cert_type)
