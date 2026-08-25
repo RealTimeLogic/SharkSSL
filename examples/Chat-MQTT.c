@@ -10,9 +10,9 @@
  ****************************************************************************
  *   PROGRAM MODULE
  *
- *   $Id: Chat-MQTT.c 4972 2021-12-27 19:37:51Z wini $
+ *   $Id: Chat-MQTT.c 5853 2026-08-17 09:48:31Z gianluca $
  *
- *   COPYRIGHT:  Real Time Logic LLC, 2015 - 2021
+ *   COPYRIGHT:  Real Time Logic LLC, 2015 - 2026
  *
  *   This software is copyrighted by and is the sole property of Real
  *   Time Logic LLC.  All rights, title, ownership, or other interests in

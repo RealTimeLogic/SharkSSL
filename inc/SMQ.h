@@ -12,9 +12,9 @@
  *   This file is part of SharkMQ:
  *            https://realtimelogic.com/products/sharkssl/SharkMQ/
  *
- *   $Id: SMQ.h 5029 2022-01-16 21:32:09Z wini $
+ *   $Id: SMQ.h 5853 2026-08-17 09:48:31Z gianluca $
  *
- *   COPYRIGHT:  Real Time Logic LLC, 2014 - 2022
+ *   COPYRIGHT:  Real Time Logic LLC, 2014 - 2026
  *
  *   This software is copyrighted by and is the sole property of Real
  *   Time Logic LLC.  All rights, title, ownership, or other interests in
@@ -134,7 +134,7 @@
 #define SMQ_CREATESUBACK     -20002
 
 /** Change notification event (from observed tid). Observe events are
- * initiated via #SharkMQ_observe.
+    initiated via #SharkMQ_observe.
 
     \li SharkMQ::ptid is set to the observed Topic ID.
     \li SharkMQ::status is set to the number of clients subscribed to the topic.
@@ -273,6 +273,9 @@ typedef struct SharkMQ
 /** Request the broker to provide change notification events when the
     number of subscribers to a specific topic changes. Ephemeral topic
     IDs can also be observed.
+    See the
+    [broker's SMQ:observe documentation](https://realtimelogic.com/ba/doc/en/lua/SMQ.html#observe)
+    for details on using 'observe'
     \see SharkMQ_observe
 */
    int observe(U32 tid);
@@ -538,6 +541,10 @@ int SharkMQ_pubflush(SharkMQ* o, U32 tid, U32 subtid);
 
     Change notification events are received as #SMQ_SUBCHANGE via
     #SharkMQ_getMessage.
+
+    See the
+    [broker's SMQ:observe documentation](https://realtimelogic.com/ba/doc/en/lua/SMQ.html#observe)
+    for details on using 'observe'
 
     \param o the SharkMQ instance.
     \param tid the Topic ID you which to observe.

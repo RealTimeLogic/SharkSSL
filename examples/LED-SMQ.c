@@ -10,9 +10,9 @@
  ****************************************************************************
  *   PROGRAM MODULE
  *
- *   $Id: LED-SMQ.c 5552 2024-08-16 14:43:21Z wini $
+ *   $Id: LED-SMQ.c 5855 2026-08-17 09:51:06Z gianluca $
  *
- *   COPYRIGHT:  Real Time Logic LLC, 2014 - 2022
+ *   COPYRIGHT:  Real Time Logic LLC, 2014 - 2026
  *
  *   This software is copyrighted by and is the sole property of Real
  *   Time Logic LLC.  All rights, title, ownership, or other interests in
@@ -260,7 +260,7 @@ int main(int argc, char* argv[])
 #else
           "SMQ LED Demo.\n"
 #endif
-          "Copyright (c) 2018 Real Time Logic.\n",
+          "Copyright (c) 2026 Real Time Logic.\n",
           argv[0]);
 
    for(i=1 ; i < argc ; i++)

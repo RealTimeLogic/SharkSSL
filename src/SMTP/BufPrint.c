@@ -10,9 +10,9 @@
  ****************************************************************************
  *            PROGRAM MODULE
  *
- *   $Id: BufPrint.c 5029 2022-01-16 21:32:09Z wini $
+ *   $Id: BufPrint.c 5839 2026-07-29 13:27:22Z wini $
  *
- *   COPYRIGHT:  Real Time Logic, 2002 - 2022
+ *   COPYRIGHT:  Real Time Logic, 2002 - 2026
  *
  *   This software is copyrighted by and is the sole property of Real
  *   Time Logic LLC.  All rights, title, ownership, or other interests in
@@ -369,109 +369,113 @@ BufPrint_b64urlEncode(BufPrint* o, const void* source, S32 slen, BaBool padding)
 
 
 BA_API int
-BufPrint_jsonString(BufPrint* o, const char* str)
+BufPrint_jsonString(BufPrint* o, const char* str, size_t len)
 {
+   const U8* s = (const U8*)str;
+   int status;
    BufPrint_putcMacro(o,'"');
-   while(*str)
+   while(len)
    {
-      if(*str < ' ' ||  *str == '"')
+      U32 uc;
+      U8 c = *s++;
+      len--;
+      if(c < ' ' || c == '"')
       {
-         if(*str > 0)
+         switch(c)
          {
-            switch(*str)
-            {
-               case '\b': BufPrint_write(o, "\\b",2); break;
-               case '\t': BufPrint_write(o, "\\t",2); break;
-               case '\n': BufPrint_write(o, "\\n",2); break;
-               case '\v': BufPrint_write(o, "\\v",2); break;
-               case '\f': BufPrint_write(o, "\\f",2); break;
-               case '\r': BufPrint_write(o, "\\r",2); break;
-               case '\"': BufPrint_write(o, "\\\"",2);break;
-               case '\'': BufPrint_write(o, "\\'",2); break;
-               default: BufPrint_printf(o,"\\u%04x",(unsigned)*str);
-            }
+            case '\b':
+               status=BufPrint_write(o, "\\b",2);
+               break;
+            case '\t':
+               status=BufPrint_write(o, "\\t",2);
+               break;
+            case '\n':
+               status=BufPrint_write(o, "\\n",2);
+               break;
+            case '\f':
+               status=BufPrint_write(o, "\\f",2);
+               break;
+            case '\r':
+               status=BufPrint_write(o, "\\r",2);
+               break;
+            case '\"':
+               status=BufPrint_write(o, "\\\"",2);
+               break;
+            default:
+               status=BufPrint_printf(o,"\\u%04x",(unsigned)c);
+         }
+         if(status < 0)
+            return status;
+      }
+      else if(c < 0x80)
+      {
+         if(c == '\\')
+            status=BufPrint_write(o,"\\\\",2);
+         else if(c == '/')
+            status=BufPrint_write(o, "\\/",2);
+         else if(c == 0x7f)
+            status=BufPrint_printf(o,"\\u%04x",(unsigned)c);
+         else
+         {
+            BufPrint_putcMacro(o, c);
+            status=0;
+         }
+         if(status < 0)
+            return status;
+      }
+      else
+      {
+         if(c >= 0xc2 && c <= 0xdf)
+         {
+            if(len < 1 || (s[0] & 0xc0) != 0x80)
+               return -1;
+            uc = ((U32)(c & 0x1f) << 6) | (s[0] & 0x3f);
+            s++;
+            len--;
+         }
+         else if(c >= 0xe0 && c <= 0xef)
+         {
+            if(len < 2 || (s[0] & 0xc0) != 0x80 ||
+               (s[1] & 0xc0) != 0x80)
+               return -1;
+            uc = ((U32)(c & 0x0f) << 12) |
+               ((U32)(s[0] & 0x3f) << 6) | (s[1] & 0x3f);
+            if(uc < 0x800 || (uc >= 0xd800 && uc <= 0xdfff))
+               return -1;
+            s += 2;
+            len -= 2;
+         }
+         else if(c >= 0xf0 && c <= 0xf4)
+         {
+            if(len < 3 || (s[0] & 0xc0) != 0x80 ||
+               (s[1] & 0xc0) != 0x80 || (s[2] & 0xc0) != 0x80)
+               return -1;
+            uc = ((U32)(c & 0x07) << 18) |
+               ((U32)(s[0] & 0x3f) << 12) |
+               ((U32)(s[1] & 0x3f) << 6) | (s[2] & 0x3f);
+            if(uc < 0x10000 || uc > 0x10ffff)
+               return -1;
+            s += 3;
+            len -= 3;
+         }
+         else
+            return -1;
+         if(uc < 0x10000)
+         {
+            if( (status=BufPrint_printf(o,"\\u%04x", uc)) < 0)
+               return status;
          }
          else
          {
-            unsigned char c = str[0];
-            unsigned long uc = 0;
-            if (c < 0xc0)
-               uc = c;
-            else if (c < 0xe0)
-            {
-               if ((str[1] & 0xc0) == 0x80)
-               {
-                  uc = ((c & 0x1f) << 6) | (str[1] & 0x3f);
-                  ++str;
-               }
-               else
-                  uc = c;
-            }
-            else if (c < 0xf0)
-            {
-               if ((str[1] & 0xc0) == 0x80 &&
-                   (str[2] & 0xc0) == 0x80)
-               {
-                  uc = ((c & 0x0f) << 12) |
-                     ((str[1] & 0x3f) << 6) | (str[2] & 0x3f);
-                  str += 2;
-               }
-               else
-                  uc = c;
-            }
-            else if (c < 0xf8)
-            {
-               if ((str[1] & 0xc0) == 0x80 &&
-                   (str[2] & 0xc0) == 0x80 &&
-                   (str[3] & 0xc0) == 0x80)
-               {
-                  uc = ((c & 0x03) << 18) |
-                     ((str[1] & 0x3f) << 12) |
-                     ((str[2] & 0x3f) << 6) |
-                     (str[4] & 0x3f);
-                  str += 3;
-               }
-               else
-                  uc = c;
-            }
-            else if (c < 0xfc)
-            {
-               if ((str[1] & 0xc0) == 0x80 &&
-                   (str[2] & 0xc0) == 0x80 &&
-                   (str[3] & 0xc0) == 0x80 &&
-                   (str[4] & 0xc0) == 0x80)
-               {
-                  uc = ((c & 0x01) << 24) |
-                     ((str[1] & 0x3f) << 18) |
-                     ((str[2] & 0x3f) << 12) |
-                     ((str[4] & 0x3f) << 6) |
-                     (str[5] & 0x3f);
-                  str += 4;
-               }
-               else
-                  uc = c;
-            }
-            else
-               ++str; /* ignore */
-            if (uc < 0x10000)
-               BufPrint_printf(o,"\\u%04x", uc);
-            else
-            {
-               uc -= 0x10000;
-               BufPrint_printf(o,"\\u%04x", 0xdc00 | ((uc >> 10) & 0x3ff));
-               BufPrint_printf(o,"\\u%04x", 0xd800 | (uc & 0x3ff));
-            }
+            uc -= 0x10000;
+            if( (status=BufPrint_printf(
+                    o,"\\u%04x", 0xd800 | (uc >> 10))) < 0)
+               return status;
+            if( (status=BufPrint_printf(
+                    o,"\\u%04x", 0xdc00 | (uc & 0x3ff))) < 0)
+               return status;
          }
       }
-      else if(*str == '\\')
-         BufPrint_write(o,"\\\\",2);
-      else if(*str == '/')
-         BufPrint_write(o, "\\/",2);
-      else if(*str == 0x7f)
-         BufPrint_printf(o,"\\u%04x",(unsigned)*str);
-      else
-         BufPrint_putcMacro(o, *str);
-      str++;
    }
    BufPrint_putcMacro(o,'"');
    return 0;
@@ -1070,7 +1074,8 @@ BufPrint_vprintf(BufPrint* o, const char* fmt, va_list argList)
 
          if(*fmt++ == 'j')
          {
-            BufPrint_jsonString(o, ptr);
+            if( (retVal=BufPrint_jsonString(o, ptr, (size_t)bufLen)) != 0 )
+               return retVal;
          }
          else
          {

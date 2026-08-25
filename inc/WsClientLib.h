@@ -10,9 +10,9 @@
  ****************************************************************************
  *   PROGRAM MODULE
  *
- *   $Id: WsClientLib.h 5120 2022-03-24 15:25:13Z wini $
+ *   $Id: WsClientLib.h 5853 2026-08-17 09:48:31Z gianluca $
  *
- *   COPYRIGHT:  Real Time Logic LLC, 2014 - 2022
+ *   COPYRIGHT:  Real Time Logic LLC, 2014 - 2026
  *
  *   This software is copyrighted by and is the sole property of Real
  *   Time Logic LLC.  All rights, title, ownership, or other interests in

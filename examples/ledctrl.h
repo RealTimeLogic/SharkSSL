@@ -12,7 +12,7 @@
  *
  *   $Id: selib.h 3407 2014-06-24 22:44:50Z wini $
  *
- *   COPYRIGHT:  Real Time Logic LLC, 2013 - 2015
+ *   COPYRIGHT:  Real Time Logic LLC, 2013 - 2026
  *
  *   This software is copyrighted by and is the sole property of Real
  *   Time Logic LLC.  All rights, title, ownership, or other interests in

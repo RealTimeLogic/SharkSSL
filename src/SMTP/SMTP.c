@@ -9,9 +9,9 @@
  *                  SMTP example program
  ****************************************************************************
  *
- *   $Id: SMTP.c 4874 2021-10-14 23:13:51Z wini $
+ *   $Id: SMTP.c 5853 2026-08-17 09:48:31Z gianluca $
  *
- *   COPYRIGHT:  Real Time Logic, 2013 - 2021
+ *   COPYRIGHT:  Real Time Logic, 2013 - 2026
  *
  *   This software is copyrighted by and is the sole property of Real
  *   Time Logic LLC.  All rights, title, ownership, or other interests in

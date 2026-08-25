@@ -10,9 +10,9 @@
  ****************************************************************************
  *   PROGRAM MODULE
  *
- *   $Id: RayCrypto-ECDSA.c 5481 2023-10-08 21:31:49Z wini $
+ *   $Id: RayCrypto-ECDSA.c 5853 2026-08-17 09:48:31Z gianluca $
  *
-*   COPYRIGHT:  Real Time Logic LLC, 2015 - 2023
+*   COPYRIGHT:  Real Time Logic LLC, 2015 - 2026
  *
  *   This software is copyrighted by and is the sole property of Real
  *   Time Logic LLC.  All rights, title, ownership, or other interests in

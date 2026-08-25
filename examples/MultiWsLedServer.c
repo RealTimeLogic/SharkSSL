@@ -12,7 +12,7 @@
  *
  *   $Id: WsLedServer.c 4329 2018-11-26 22:49:59Z wini $
  *
- *   COPYRIGHT:  Real Time Logic LLC, 2020 - 2021
+ *   COPYRIGHT:  Real Time Logic LLC, 2020 - 2026
  *
  *   This software is copyrighted by and is the sole property of Real
  *   Time Logic LLC.  All rights, title, ownership, or other interests in

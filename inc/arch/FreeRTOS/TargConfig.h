@@ -10,9 +10,9 @@
  ****************************************************************************
  *   PROGRAM MODULE
  *
- *   $Id: TargConfig.h 5466 2023-07-12 14:04:42Z wini $
+ *   $Id: TargConfig.h 5853 2026-08-17 09:48:31Z gianluca $
  *
- *   COPYRIGHT:  Real Time Logic LLC, 2015 - 2023
+ *   COPYRIGHT:  Real Time Logic LLC, 2015 - 2026
  *
  *   This software is copyrighted by and is the sole property of Real
  *   Time Logic LLC.  All rights, title, ownership, or other interests in

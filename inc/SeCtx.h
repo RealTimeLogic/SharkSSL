@@ -9,9 +9,9 @@
  ****************************************************************************
  *            HEADER
  *
- *   $Id: SeCtx.h 4914 2021-12-01 18:24:30Z wini $
+ *   $Id: SeCtx.h 5853 2026-08-17 09:48:31Z gianluca $
  *
- *   COPYRIGHT:  Real Time Logic LLC, 2014 - 2017
+ *   COPYRIGHT:  Real Time Logic LLC, 2014 - 2026
  *
  *   This software is copyrighted by and is the sole property of Real
  *   Time Logic LLC.  All rights, title, ownership, or other interests in

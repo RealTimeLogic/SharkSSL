@@ -9,9 +9,9 @@
  ****************************************************************************
  *   PROGRAM MODULE
  *
- *   $Id: LED-JSON.c 5021 2022-01-13 18:59:01Z wini $
+ *   $Id: LED-JSON.c 5839 2026-07-29 13:27:22Z wini $
  *
- *   COPYRIGHT:  Real Time Logic LLC, 2014 - 2021
+ *   COPYRIGHT:  Real Time Logic LLC, 2014 - 2026
  *
  *   This software is copyrighted by and is the sole property of Real
  *   Time Logic LLC.  All rights, title, ownership, or other interests in
@@ -72,6 +72,7 @@
 #include <JParser.h>
 #include <JDecoder.h>
 #include <JEncoder.h>
+#include <string.h>
 #include "ledctrl.h"
 
 
@@ -336,6 +337,7 @@ typedef struct
 static int
 M2MLED_sendDevInfo2Server(M2MLED* o)
 {
+   const char* name;
    int i, ledLen;
    const LedInfo* ledInfo = getLedInfo(&ledLen);
    JEncoder_beginArray(&o->encoder);
@@ -343,7 +345,8 @@ M2MLED_sendDevInfo2Server(M2MLED* o)
    JEncoder_beginObject(&o->encoder);
    /* Member 1 */
    JEncoder_setName(&o->encoder,"devname");
-   JEncoder_setString(&o->encoder,getDevName());
+   name=getDevName();
+   JEncoder_setString(&o->encoder,name,strlen(name));
    /* Member 2 */
    JEncoder_setName(&o->encoder,"leds");
    JEncoder_beginArray(&o->encoder);
@@ -785,4 +788,3 @@ mainTask(SeCtx* ctx)
    }
    SharkSsl_destructor(&sharkSsl);
 }
-

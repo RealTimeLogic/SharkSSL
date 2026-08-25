@@ -12,7 +12,7 @@
  *
  *   $Id: CSR.c 4007 2017-02-26 21:17:59Z gianluca $
  *
- *   COPYRIGHT:  Real Time Logic LLC, 2018
+ *   COPYRIGHT:  Real Time Logic LLC, 2018 - 2026
  *
  *   This software is copyrighted by and is the sole property of Real
  *   Time Logic LLC.  All rights, title, ownership, or other interests in
@@ -40,6 +40,7 @@
  */
 
 #include <SharkSslASN1.h>
+#include <string.h>
 
 
 
@@ -631,8 +632,114 @@ void printOutRSAKey(U8 *rsaKeyData, int rsaKeyDataLen)
 #endif
 
 
-int main()
+#if (SHARKSSL_ENABLE_CSR_CREATION && SHARKSSL_ENABLE_CSR_SIGNING && \
+     SHARKSSL_ENABLE_RSA && SHARKSSL_USE_ECC)
+static int signCSRForTest(const char *name,
+                          U8 *csrData,
+                          int csrDataLen,
+                          SharkSslCert caCert,
+                          SharkSslKey privKey)
 {
+   SharkSslCert signedCSR;
+   int certLen = SharkSslCert_signCSR(&signedCSR,
+                                      csrData, csrDataLen,
+                                      caCert, privKey,
+                                      "20260823000000", "20270823000000",
+                                      1, SHARKSSL_HASHID_SHA256);
+   if (certLen <= 0)
+   {
+      printf("FAIL %s (%d)\n", name, certLen);
+      return 1;
+   }
+   baFree((void*)signedCSR);
+   printf("PASS %s\n", name);
+   return 0;
+}
+
+
+static int mixedSigningTest(void)
+{
+   U8 buf[2048];
+   U8 *csrData;
+   int csrDataLen;
+   int failed = 0;
+   SharkSslASN1Create asn;
+   SharkSslCertDN subject;
+   SharkSslBitExtReq keyUsage;
+   SharkSslBitExtReq nsCertType;
+   SharkSslKey privKey;
+
+   sharkssl_entropy(0xDEADBEEF);
+   sharkssl_entropy(baGetUnixTime());
+
+   SharkSslCertDN_constructor(&subject);
+   SharkSslCertDN_setCommonName(&subject, "mixed-signing.example.invalid");
+   SharkSslCertDN_setOrganization(&subject, "Real Time Logic");
+   SharkSslCertDN_setCountryName(&subject, "US");
+   keyUsage.bits = SHARKSSL_X509_KU_DIGITAL_SIGNATURE;
+   nsCertType.bits = SHARKSSL_X509_NS_CERT_TYPE_SSL_SERVER;
+
+   privKey = (SharkSslKey)sharkssl_PEM_to_ECCKey(privECKeyPEM256, NULL);
+   if (NULL == privKey)
+   {
+      printf("FAIL parse ECC key\n");
+      return 1;
+   }
+   SharkSslASN1Create_constructor(&asn, buf, sizeof(buf));
+   if (SharkSslASN1Create_CSR(&asn, privKey, SHARKSSL_HASHID_SHA256,
+                              &subject, NULL, &keyUsage, &nsCertType))
+   {
+      printf("FAIL create ECC CSR\n");
+      failed++;
+   }
+   else
+   {
+      csrDataLen = SharkSslASN1Create_getDataLen(&asn, &csrData);
+      failed += signCSRForTest("RSA CA signs ECC CSR", csrData, csrDataLen,
+                               (SharkSslCert)sharkSslRSACertCA_RTL, privKey);
+   }
+   SharkSslECCKey_free(privKey);
+
+   privKey = sharkssl_PEM_to_RSAKey(privRSAKeyPEM2048, NULL);
+   if (NULL == privKey)
+   {
+      printf("FAIL parse RSA key\n");
+      return 1;
+   }
+   SharkSslASN1Create_constructor(&asn, buf, sizeof(buf));
+   if (SharkSslASN1Create_CSR(&asn, privKey, SHARKSSL_HASHID_SHA256,
+                              &subject, NULL, &keyUsage, &nsCertType))
+   {
+      printf("FAIL create RSA CSR\n");
+      failed++;
+   }
+   else
+   {
+      csrDataLen = SharkSslASN1Create_getDataLen(&asn, &csrData);
+      failed += signCSRForTest("ECC CA signs RSA CSR", csrData, csrDataLen,
+                               (SharkSslCert)sharkSslECCertCA_RTL, privKey);
+   }
+   SharkSslRSAKey_free(privKey);
+
+   printf("TEST_SUMMARY %d %d\n", 2 - failed, 2);
+   return failed ? 1 : 0;
+}
+#endif
+
+
+int main(int argc, char **argv)
+{
+   #if (SHARKSSL_ENABLE_CSR_CREATION && SHARKSSL_ENABLE_CSR_SIGNING && \
+        SHARKSSL_ENABLE_RSA && SHARKSSL_USE_ECC)
+   if ((2 == argc) && (0 == strcmp(argv[1], "--mixed-signing-test")))
+   {
+      return mixedSigningTest();
+   }
+   #else
+   (void)argc;
+   (void)argv;
+   #endif
+
    #if SHARKSSL_ENABLE_CSR_CREATION
    U8 buf[2048];
    SharkSslASN1Create asn;

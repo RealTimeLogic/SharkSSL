@@ -11,9 +11,9 @@
  *   This file is part of SharkMQTT:
  *             https://realtimelogic.com/products/sharkmqtt/
  *
- *   $Id: SharkMQTT.h 5100 2022-02-19 16:23:57Z wini $
+ *   $Id: SharkMQTT.h 5853 2026-08-17 09:48:31Z gianluca $
  *
- *   COPYRIGHT:  Real Time Logic, 2015 - 2022
+ *   COPYRIGHT:  Real Time Logic, 2015 - 2026
  *
  *   This software is copyrighted by and is the sole property of Real
  *   Time Logic LLC.  All rights, title, ownership, or other interests in

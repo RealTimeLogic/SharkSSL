@@ -10,9 +10,9 @@
  ****************************************************************************
  *   PROGRAM MODULE
  *
- *   $Id: SharkSSL_cfg.h 5617 2025-02-17 16:03:45Z wini $
+ *   $Id: SharkSSL_cfg.h 5858 2026-08-22 14:40:42Z gianluca $
  *
- *   COPYRIGHT:  Real Time Logic LLC, 2010 - 2022
+ *   COPYRIGHT:  Real Time Logic LLC, 2010 - 2026
  *
  *   This software is copyrighted by and is the sole property of Real
  *   Time Logic LLC.  All rights, title, ownership, or other interests in
@@ -182,6 +182,18 @@
 #endif
 
 
+/** Select 1 to enable support for Post Handshake Authentication
+ *  (RFC 8446 sections 4.2.6 and 4.6.2)
+ *  Note: #SHARKSSL_TLS_1_3 and #SHARKSSL_ENABLE_CLIENT_AUTH must be enabled
+ *  ========================================================================
+ *  EXPERIMENTAL! Application encrypted data returned by SharkSslCon_encrypt()
+ *  must be sent before calling SharkSslCon_decrypt() again.
+ */
+#ifndef SHARKSSL_ENABLE_POST_HANDSHAKE_AUTH
+#define SHARKSSL_ENABLE_POST_HANDSHAKE_AUTH              0
+#endif
+
+
 /** Select 1 to enable CLIENT side TLS
  */
 #ifndef SHARKSSL_SSL_CLIENT_CODE
@@ -294,16 +306,19 @@
 #endif
 
 
- /** Enable/disable RSASSA-PSS padding in RSA API (RFC 8017)
-  *  (#SHARKSSL_ENABLE_RSA_API must be enabled)
-  *  note: with the default define below, it is enabled
-  *  whenever TLS 1.3 is
-  */
+/** Enable/disable RSASSA-PSS padding in RSA API (RFC 8017)
+ *  (#SHARKSSL_ENABLE_RSA_API must be enabled to use RSASSA-PSS
+ *  through the RSA API)
+ *
+ *  RSASSA-PSS is automatically enabled for RSA CertificateVerify
+ *  signatures when TLS 1.3 and RSA are enabled
+ */
 #ifndef SHARKSSL_ENABLE_RSASSA_PSS
-#define SHARKSSL_ENABLE_RSASSA_PSS                       SHARKSSL_TLS_1_3
+#define SHARKSSL_ENABLE_RSASSA_PSS                       1
 #endif
 
-/** Enable/disable OAEP padding in RSA API
+
+ /** Enable/disable OAEP padding in RSA API
  *  (#SHARKSSL_ENABLE_RSA_API must be enabled)
  */
 #ifndef SHARKSSL_ENABLE_RSA_OAEP
@@ -559,6 +574,14 @@
 #endif
 
 
+/** Enable/disable the X25519 public API 
+ *  (sharkssl_X25519_createKeyPair, sharkssl_X25519_sharedSecret)
+ */
+#ifndef SHARKSSL_ENABLE_X25519_API
+#define SHARKSSL_ENABLE_X25519_API                       1
+#endif
+
+
 /** Enable/disable the Curve448 curve (RFC 7748)
  */
 #ifndef SHARKSSL_ECC_USE_CURVE448
@@ -670,6 +693,10 @@
 /** TLS 1.3 sanity #defines
  */
 #if SHARKSSL_TLS_1_3
+#if SHARKSSL_ENABLE_RSA
+#undef  SHARKSSL_ENABLE_RSASSA_PSS
+#define SHARKSSL_ENABLE_RSASSA_PSS                       1
+#endif
 #if !SHARKSSL_TLS_1_2
 #if SHARKSSL_ENABLE_SECURE_RENEGOTIATION
 #undef SHARKSSL_ENABLE_SECURE_RENEGOTIATION

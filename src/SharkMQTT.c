@@ -12,9 +12,9 @@
  *   This file is part of SharkMQTT:
  *             https://realtimelogic.com/products/sharkmqtt/
  *
- *   $Id: SharkMQTT.c 4895 2021-11-12 21:07:17Z wini $
+ *   $Id: SharkMQTT.c 5853 2026-08-17 09:48:31Z gianluca $
  *
- *   COPYRIGHT:  Real Time Logic, 2015 - 2021
+ *   COPYRIGHT:  Real Time Logic, 2015 - 2026
  *
  *   This software is copyrighted by and is the sole property of Real
  *   Time Logic LLC.  All rights, title, ownership, or other interests in

@@ -10,9 +10,9 @@
  ****************************************************************************
  *   PROGRAM MODULE
  *
- *   $Id: SharkSSL.h 5658 2025-04-30 05:08:15Z gianluca $
+ *   $Id: SharkSSL.h 5868 2026-08-23 10:09:50Z wini $
  *
- *   COPYRIGHT:  Real Time Logic LLC, 2010 - 2025
+ *   COPYRIGHT:  Real Time Logic LLC, 2010 - 2026
  *
  *   This software is copyrighted by and is the sole property of Real
  *   Time Logic LLC.  All rights, title, ownership, or other interests in
@@ -73,8 +73,8 @@ typedef U64 SharkCertSerialNumber;
 #define sharkCertSerialNumber2NetworkEndian(n)  \
    do {                                         \
       U64 nn=0;                                 \
-      register U8* t=(U8*)&nn;                  \
-      register U8* f=(U8*)&n;                   \
+      register U8 *t=(U8*)&nn;                  \
+      register U8 *f=(U8*)&n;                   \
       t[7]=f[0];                                \
       t[6]=f[1];                                \
       t[5]=f[2];                                \
@@ -404,13 +404,13 @@ U32 baGetUnixTime(void);
    error, where the typical reason would be that the buffer is full.
  */
 SHARKSSL_API int
-SharkSslASN1Create_CSR(struct SharkSslASN1Create* o,
+SharkSslASN1Create_CSR(struct SharkSslASN1Create *o,
                        SharkSslKey privKey,
                        U8 hashID,
-                       struct SharkSslCertDN* certDN,
+                       struct SharkSslCertDN *certDN,
                        const char *SAN,
-                       struct SharkSslBitExtReq* keyUsage,
-                       struct SharkSslBitExtReq* nsCertType);
+                       struct SharkSslBitExtReq *keyUsage,
+                       struct SharkSslBitExtReq *nsCertType);
 #endif
 
 #if SHARKSSL_ENABLE_CSR_SIGNING
@@ -454,11 +454,13 @@ SharkSslASN1Create_CSR(struct SharkSslASN1Create* o,
       certificate. The produced certificate , with the dummy key,
       cannot be used as argument to SharkSsl_addCertificate.
 
-   \param validFrom string in format YYYYMMDDHHMMSS. The certificate is
-   valid starting from this date.
+   \param validFrom UTC date/time string in format YYYYMMDDHHMMSS. The
+   certificate is valid starting from this date. No timezone conversion is
+   performed.
 
-   \param validTo string in format YYYYMMDDHHMMSS. The certificate is
-   valid until this date.
+   \param validTo UTC date/time string in format YYYYMMDDHHMMSS. The
+   certificate is valid until this date. No timezone conversion is
+   performed.
 
    \param serialNumber serial number for the generated certificate.
 
@@ -526,8 +528,8 @@ struct SharkSsl;
  */
 #ifndef _DOXYGEN
 struct SharkSslIntf;
-typedef void (*SharkSslIntf_Terminate)(struct SharkSslIntf* o,
-                                       struct SharkSsl* ssl); 
+typedef void (*SharkSslIntf_Terminate)(struct SharkSslIntf *o,
+                                       struct SharkSsl *ssl); 
 typedef struct SharkSslIntf
 {
    SharkSslIntf_Terminate terminate;
@@ -568,7 +570,7 @@ SharkSsl
 {
 #ifdef __cplusplus
    void *operator new(size_t s) { return ::baMalloc(s); }
-   void operator delete(void* d) { if(d) ::baFree(d); }
+   void operator delete(void *d) { if(d) ::baFree(d); }
    void *operator new(size_t, void *place) { return place; }
    void operator delete(void*, void *) { }
 
@@ -601,7 +603,7 @@ SharkSsl
    #if SHARKSSL_ENABLE_SESSION_CACHE  || SHARKSSL_NOPACK
    SharkSslSessionCache sessionCache;
    /* Reserved for use with one SharkSslSCMgr object  */
-   SharkSslIntf* intf;
+   SharkSslIntf *intf;
    #endif
 } SharkSsl;
 
@@ -995,7 +997,7 @@ SHARKSSL_API void  SharkSsl_destructor(SharkSsl *o);
     [example programs](\ref SharkExamples).
     \code
 int rc;
-SharkSslCon* scon;
+SharkSslCon *scon;
 if( (rc=se_connect(&sock, "realtimelogic.com", 443)) == 0) // open socket
 {
    if( (scon = SharkSsl_createCon(&sharkSsl)) != NULL)
@@ -1024,7 +1026,7 @@ SharkSslCon *SharkSsl_createCon(SharkSsl *o);
        \until se_close
 
  */
-void SharkSsl_terminateCon(const SharkSsl *o, SharkSslCon* con);
+void SharkSsl_terminateCon(const SharkSsl *o, SharkSslCon *con);
 
 
 #if SHARKSSL_ENABLE_SESSION_CACHE
@@ -1481,9 +1483,7 @@ U8  SharkSslCon_favorRSA(SharkSslCon *o, U8 flag);
 #endif  /* SHARKSSL_SSL_SERVER_CODE */
 #endif  /* SHARKSSL_ENABLE_RSA || SHARKSSL_ENABLE_ECDSA */
 
-#if SHARKSSL_SSL_CLIENT_CODE 
 U8  SharkSslCon_selectProtocol(SharkSslCon *o, U8 protocol);
-#endif
 
 /** @addtogroup SharkSslSessionApi
 @{
@@ -1614,17 +1614,20 @@ SHARKSSL_API U8 SharkSslCon_setCertificateAuthorities(
     
     \param o the SharkSslCon object returned by function #SharkSsl_createCon.
 
-    \param protList a string of comma separated protocols. Do not specify
-    a final comma at the end of the string. This string
-    must be a constant string stored in ROM for the function
-    #SharkSslCon_getALPNProtocol to work properly.
+    \param protList a comma-separated list of protocol names, or NULL to
+    clear the currently configured list. Each protocol name must contain
+    from 1 to 255 bytes. Leading, trailing, and consecutive commas are
+    not permitted. The complete string must not exceed 65532 bytes.
+    The string is not copied and must therefore remain valid and
+    unmodified for as long as it may be used by the connection, including
+    calls to #SharkSslCon_getALPNProtocol (e.g., a constant string stored in ROM).
         
-    \return TRUE (1) if the request is accepted. Returns FALSE (0) if
-    the SharkSSL connection is already going through or done with a
-    handshaking phase.
+    \return TRUE (1) if the protocol list is accepted or successfully
+    cleared. Returns FALSE (0) if the connection is invalid, is not a
+    client connection, has already started the handshake, or if
+    protList is malformed or exceeds the permitted length.
 */
-SHARKSSL_API U8 SharkSslCon_setALPNProtocols(
-   SharkSslCon* o, const char* protList);
+SHARKSSL_API U8 SharkSslCon_setALPNProtocols(SharkSslCon *o, const char *protList);
 
 /** This function is used by client solutions to return the application
     layer protocol selected by the server among the ones specified through
@@ -1639,10 +1642,10 @@ SHARKSSL_API U8 SharkSslCon_setALPNProtocols(
     function #SharkSslCon_setALPNProtocols; please be aware that the protocol
     name can be terminated by a NULL or a comma, according to the passed string.
 */
-SHARKSSL_API const char *SharkSslCon_getALPNProtocol(SharkSslCon* o);
+SHARKSSL_API const char *SharkSslCon_getALPNProtocol(SharkSslCon *o);
 #endif
 #if SHARKSSL_SSL_SERVER_CODE
-typedef int(*ALPNFunction)(SharkSslCon*, const char*, void *);
+typedef int(*ALPNFunction)(SharkSslCon*, const char*, void*);
 SHARKSSL_API U8 SharkSslCon_setALPNFunction(
    SharkSslCon *o, ALPNFunction func, void *pvoid);
 #endif
@@ -1787,14 +1790,14 @@ typedef enum
     example:
 
     \code
-int addMyCert(SharkSsl* shark)
+int addMyCert(SharkSsl *shark)
 {
    SharkSslCert *sharkCert;
    // The two following functions illustrate how a certificate and
    // key can be read from a file system and inserted into an
    // allocated buffer.
-   char* cert=readMyCertFromFileSystem();
-   char* key=readMyKeyFromFileSystem();
+   char *cert=readMyCertFromFileSystem();
+   char *key=readMyKeyFromFileSystem();
    if(sharkssl_PEM(cert,key,NULL,&sharkCert))
       return -1;
    free(cert);
@@ -2247,7 +2250,6 @@ SHARKSSL_API sharkssl_RSA_RetVal sharkssl_RSA_public_decrypt(
 
 
 #if SHARKSSL_USE_ECC
-
 /*
  * NamedCurve, use as curveID parameter
  * SECPxxxR1       - RFC 4492 section 5.1.1
@@ -2262,6 +2264,49 @@ SHARKSSL_API sharkssl_RSA_RetVal sharkssl_RSA_public_decrypt(
 #define SHARKSSL_EC_CURVE_ID_BRAINPOOLP512R1  28
 #define SHARKSSL_EC_CURVE_ID_CURVE25519       29
 #define SHARKSSL_EC_CURVE_ID_CURVE448         30
+
+#define SHARKSSL_X25519_KEY_LEN               32
+
+
+#if (SHARKSSL_ECC_USE_CURVE25519 && SHARKSSL_ENABLE_X25519_API)
+/** Create an X25519 private/public key pair.
+    \ingroup RayCryptoApi
+
+    \param privateKey receives the 32-byte private key. The key must be
+           treated as opaque and passed unchanged to
+           #sharkssl_X25519_sharedSecret.
+    \param publicKey receives the 32-byte RFC 7748 little-endian public
+           u-coordinate.
+
+    \return zero on success and nonzero on error.
+
+    \note The SharkSSL random number generator must be initialized and
+          seeded before calling this function.
+    \note \p privateKey and \p publicKey must point to separate,
+          non-overlapping 32-byte buffers.
+ */
+SHARKSSL_API int sharkssl_X25519_createKeyPair(
+   U8 privateKey[SHARKSSL_X25519_KEY_LEN],
+   U8 publicKey[SHARKSSL_X25519_KEY_LEN]);
+
+
+/** Calculate an X25519 shared secret.
+    \ingroup RayCryptoApi
+    
+    \param privateKey a 32-byte private key generated by
+           #sharkssl_X25519_createKeyPair. The key must be passed
+           unchanged to this function.
+    \param peerPublicKey the peer's 32-byte RFC 7748 public key.
+    \param sharedSecret receives the 32-byte shared secret.
+
+    \return zero on success and nonzero on error. An all-zero shared
+            secret is rejected.
+ */
+SHARKSSL_API int sharkssl_X25519_sharedSecret(
+   const U8 privateKey[SHARKSSL_X25519_KEY_LEN],
+   const U8 peerPublicKey[SHARKSSL_X25519_KEY_LEN],
+   U8 sharedSecret[SHARKSSL_X25519_KEY_LEN]);
+#endif
 
 
 /** 
@@ -2349,7 +2394,7 @@ SHARKSSL_API U16 SharkSslKey_vectSize_keyInfo(const SharkSslKey key, U8 *keyType
 
 #if SHARKSSL_ENABLE_ECCKEY_CREATE
 
-typedef int (*sharkssl_rngfunc)(void* handle, U8 *ptr, U16 len);
+typedef int (*sharkssl_rngfunc)(void *handle, U8 *ptr, U16 len);
 
 
 /** A macro for creating an ECC key using the SharkSSL library.
@@ -2404,13 +2449,13 @@ typedef int (*sharkssl_rngfunc)(void* handle, U8 *ptr, U16 len);
    be persistent. 
    The following example shows how to create and save a key.
    \code
-   SharkSslECCKey createAndSaveKey(const char* filename)
+   SharkSslECCKey createAndSaveKey(const char *filename)
    {
       SharkSslECCKey privKey;
       int len = SharkSslECCKey_create(&privKey, SHARKSSL_EC_CURVE_ID_SECP256R1,0,0);
       if(len > 0)
       {
-         FILE* fp = fopen(filename, "w");
+         FILE *fp = fopen(filename, "w");
          if(fp)
          {
             fwrite(privKey, sizeof(U8), len, fp);
@@ -2422,7 +2467,7 @@ typedef int (*sharkssl_rngfunc)(void* handle, U8 *ptr, U16 len);
    }
    \endcode
  */
-SHARKSSL_API int SharkSslECCKey_createEx(SharkSslECCKey* privKey, U16 curveID, void* rngHandle, sharkssl_rngfunc rngFunc);
+SHARKSSL_API int SharkSslECCKey_createEx(SharkSslECCKey *privKey, U16 curveID, void *rngHandle, sharkssl_rngfunc rngFunc);
 #endif
 
 
@@ -2631,7 +2676,7 @@ SHARKSSL_API void  SharkSslCertStore_constructor(SharkSslCertStore *o);
 
 /** Cleanup all memory used by the SharkSslCAList object. 
  */
-SHARKSSL_API void  SharkSslCertStore_destructor(SharkSslCertStore* o);
+SHARKSSL_API void  SharkSslCertStore_destructor(SharkSslCertStore *o);
 
 /** Alias for SharkSslCertStore_destructor */
 #define            SharkSslCertStore_release(o) SharkSslCertStore_destructor(o)

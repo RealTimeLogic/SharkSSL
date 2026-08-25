@@ -14,9 +14,9 @@
  *   SharkMQ is a secure SMQ client.
  *   See the example program for how to use SMQ: m2m-led-SharkMQ.c 
  *
- *   $Id: SharkMQ.c 5029 2022-01-16 21:32:09Z wini $
+ *   $Id: SharkMQ.c 5853 2026-08-17 09:48:31Z gianluca $
  *
- *   COPYRIGHT:  Real Time Logic LLC, 2014 - 2022
+ *   COPYRIGHT:  Real Time Logic LLC, 2014 - 2026
  *
  *   This software is copyrighted by and is the sole property of Real
  *   Time Logic LLC.  All rights, title, ownership, or other interests in

@@ -10,9 +10,9 @@
  ****************************************************************************
  *   PROGRAM MODULE
  *
- *   $Id: selib.c 5414 2023-03-27 05:34:37Z gianluca $
+ *   $Id: selib.c 5853 2026-08-17 09:48:31Z gianluca $
  *
- *   COPYRIGHT:  Real Time Logic LLC, 2013 - 2022
+ *   COPYRIGHT:  Real Time Logic LLC, 2013 - 2026
  *
  *   This software is copyrighted by and is the sole property of Real
  *   Time Logic LLC.  All rights, title, ownership, or other interests in

@@ -12,7 +12,7 @@
  *
  *   $Id: proxy.ch 4002 2017-02-23 19:52:40Z wini $
  *
- *   COPYRIGHT:  Real Time Logic LLC, 2016
+ *   COPYRIGHT:  Real Time Logic LLC, 2016 - 2026
  *
  *   This software is copyrighted by and is the sole property of Real
  *   Time Logic LLC.  All rights, title, ownership, or other interests in

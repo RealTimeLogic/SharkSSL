@@ -12,7 +12,7 @@
  *
  *   $Id: SharkSslASN1.h 3670 2015-03-28 21:25:15Z gianluca $
  *
- *   COPYRIGHT:  Real Time Logic LLC, 2018 - 2022
+ *   COPYRIGHT:  Real Time Logic LLC, 2018 - 2026
  *
  *   This software is copyrighted by and is the sole property of Real
  *   Time Logic LLC.  All rights, title, ownership, or other interests in
@@ -185,6 +185,10 @@ extern const U8 sharkssl_oid_HMACWithSHA256[8];
 #if SHARKSSL_ENABLE_AES_CBC
 extern const U8 sharkssl_oid_aes128cbc[9];
 extern const U8 sharkssl_oid_aes256cbc[9];
+#endif
+#if (SHARKSSL_ENABLE_RSA && SHARKSSL_ENABLE_RSASSA_PSS)
+extern const U8 sharkssl_oid_rsassaPss[9];
+extern const U8 sharkssl_oid_mgf1[9];
 #endif
 
 

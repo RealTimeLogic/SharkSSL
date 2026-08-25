@@ -10,9 +10,9 @@
  ****************************************************************************
  *   PROGRAM MODULE
  *
- *   $Id: WsEchoClient.c 5120 2022-03-24 15:25:13Z wini $
+ *   $Id: WsEchoClient.c 5855 2026-08-17 09:51:06Z gianluca $
  *
- *   COPYRIGHT:  Real Time Logic LLC, 2013 - 2021
+ *   COPYRIGHT:  Real Time Logic LLC, 2013 - 2026
  *
  *   This software is copyrighted by and is the sole property of Real
  *   Time Logic LLC.  All rights, title, ownership, or other interests in
@@ -212,7 +212,7 @@ mainTask(SeCtx* ctx)
     */
    static const char info[] = {
       "SharkSSL Websocket client demo.\n"
-      "Copyright (c) 2016 Real Time Logic.  All rights reserved.\n"
+      "Copyright (c) 2026 Real Time Logic.  All rights reserved.\n"
    };
 
 #ifndef WSC_NONSEC

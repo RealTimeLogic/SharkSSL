@@ -1,6 +1,6 @@
  /**
   *  SharkSSLParseCert.  Build 3370.
-  *  Copyright (c) 2014 Real Time Logic.
+  *  Copyright (c) 2014 - 2026 Real Time Logic.
   */
 
 #include "TargConfig.h"

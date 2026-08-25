@@ -10,9 +10,9 @@
  ****************************************************************************
  *   PROGRAM MODULE
  *
- *   $Id: SharkSSLParseCAList.c 5006 2022-01-07 19:54:12Z gianluca $
+ *   $Id: SharkSSLParseCAList.c 5853 2026-08-17 09:48:31Z gianluca $
  *
- *   COPYRIGHT:  Real Time Logic LLC, 2010
+ *   COPYRIGHT:  Real Time Logic LLC, 2010 - 2026
  *
  *   This software is copyrighted by and is the sole property of Real
  *   Time Logic LLC.  All rights, title, ownership, or other interests in
@@ -110,7 +110,7 @@ int main(int argc, char **argv)
 
    initVars();
    (void)errorString;  /* warning removal */
-   printRev("$Id: SharkSSLParseCAList.c 5006 2022-01-07 19:54:12Z gianluca $");
+   printRev("$Id: SharkSSLParseCAList.c 5853 2026-08-17 09:48:31Z gianluca $");
 
    if (argc < 2)
    {

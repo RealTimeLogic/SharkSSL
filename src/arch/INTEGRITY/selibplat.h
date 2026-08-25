@@ -12,7 +12,7 @@
  *
  *   $Id: selibplat.h 4366 2019-03-22 00:32:43Z wini $
  *
- *   COPYRIGHT:  Real Time Logic LLC, 2014 - 2019
+ *   COPYRIGHT:  Real Time Logic LLC, 2014 - 2026
  *
  *   This software is copyrighted by and is the sole property of Real
  *   Time Logic LLC.  All rights, title, ownership, or other interests in

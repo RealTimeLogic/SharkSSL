@@ -13,7 +13,7 @@
  *
  *   $Id: TargConfig.h 5076 2022-02-10 16:59:48Z wini $
  *
- *   COPYRIGHT:  Real Time Logic, 2020
+ *   COPYRIGHT:  Real Time Logic, 2020 - 2026
  *
  *   This software is copyrighted by and is the sole property of Real
  *   Time Logic LLC.  All rights, title, ownership, or other interests in

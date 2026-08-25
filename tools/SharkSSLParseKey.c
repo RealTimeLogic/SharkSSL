@@ -10,9 +10,9 @@
  ****************************************************************************
  *   PROGRAM MODULE
  *
- *   $Id: SharkSSLParseKey.c 5637 2025-03-02 21:51:18Z gianluca $
+ *   $Id: SharkSSLParseKey.c 5853 2026-08-17 09:48:31Z gianluca $
  *
- *   COPYRIGHT:  Real Time Logic LLC, 2010
+ *   COPYRIGHT:  Real Time Logic LLC, 2010 - 2026
  *
  *   This software is copyrighted by and is the sole property of Real
  *   Time Logic LLC.  All rights, title, ownership, or other interests in
@@ -62,7 +62,7 @@ int main (int argc, char **argv)
    U8 cert_type;
 
    initVars();
-   printRev("$Id: SharkSSLParseKey.c 5637 2025-03-02 21:51:18Z gianluca $");
+   printRev("$Id: SharkSSLParseKey.c 5853 2026-08-17 09:48:31Z gianluca $");
 
    if (argc < 2)
    {
