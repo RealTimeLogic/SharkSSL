@@ -10,7 +10,7 @@
  ****************************************************************************
  *   PROGRAM MODULE
  *
- *   $Id: TargConfig.h 5853 2026-08-17 09:48:31Z gianluca $
+ *   $Id: TargConfig.h 5990 2026-09-12 08:22:21Z gianluca $
  *
  *   COPYRIGHT:  Real Time Logic LLC, 2010 - 2026
  *
@@ -42,10 +42,11 @@
 #endif
 
 /**
- *  baMalloc  should return 32-bit aligned addresses when successful,
- *                          NULL when not successful.
- *  baRealloc should return 32-bit aligned addresses when successful,
- *                          NULL when not successful or NOT available.
+ * baMalloc returns (void*)0 on failure. baRealloc returns (void*)0 on failure
+ * or when not available. If SHARKSSL_UNALIGNED_MALLOC is 0, successful
+ * allocations must be aligned to SHARKSSL_ALIGNMENT. If it is 1, retain the
+ * raw allocation address for baFree. baRealloc is safe only for raw byte
+ * buffers; aligned typed objects require allocate-copy-free.
  */
 
 #ifndef NDEBUG
@@ -67,8 +68,8 @@
 
 #if 1
 #include <stdlib.h>        /* malloc/realloc/free */
-#define baMalloc(s)        malloc(s)      /* should return 32-bit aligned address */
-#define baRealloc(m, s)    realloc(m, s)  /* as above */
+#define baMalloc(s)        malloc(s)
+#define baRealloc(m, s)    realloc(m, s)
 #define baFree(m)          free(m)
 #else
 #include "../../../examples/malloc/umm_malloc.h"

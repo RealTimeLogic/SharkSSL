@@ -10,7 +10,7 @@
  ****************************************************************************
  *   PROGRAM MODULE
  *
- *   $Id: TargConfig.h 5853 2026-08-17 09:48:31Z gianluca $
+ *   $Id: TargConfig.h 5963 2026-09-10 21:54:48Z gianluca $
  *
  *   COPYRIGHT:  Real Time Logic LLC, 2010 - 2026
  *
@@ -38,10 +38,11 @@
 #define _SharkSsl_TargConfig_h
 
 /**
- *  baMalloc  should return 32-bit aligned addresses when succesful,
- *                          (void*)0 when not succesful.
- *  baRealloc should return 32-bit aligned addresses when succesful,
- *                          (void*)0 when not succesful or NOT available.
+ * baMalloc returns (void*)0 on failure. baRealloc returns (void*)0 on failure
+ * or when not available. If SHARKSSL_UNALIGNED_MALLOC is 0, successful
+ * allocations must be aligned to SHARKSSL_ALIGNMENT. If it is 1, retain the
+ * raw allocation address for baFree. baRealloc is safe only for raw byte
+ * buffers; aligned typed objects require allocate-copy-free.
  */
 
 #ifndef NDEBUG
@@ -53,7 +54,7 @@
 /* ThreadX */
 #include <tx_api.h>
 
-#define baMalloc(size)       sharkSslTxByteAlloc((U32)size)  /* should return 32-bit aligned address */
+#define baMalloc(size)       sharkSslTxByteAlloc((U32)size)
 #define baRealloc(ptr, size) (void*)0;                       /* not implemented */
 #define baFree(ptr)          tx_byte_release((VOID*)ptr)
 

@@ -81,8 +81,15 @@
 #endif
 #define BaBool Boolean
 
-#define baMalloc(s)        malloc(s)      /* should return 32-bit aligned address */
-#define baRealloc(m, s)    realloc(m, s)  /* as above */
+/**
+ * baMalloc returns (void*)0 on failure. baRealloc returns (void*)0 on failure
+ * or when not available. If SHARKSSL_UNALIGNED_MALLOC is 0, successful
+ * allocations must be aligned to SHARKSSL_ALIGNMENT. If it is 1, retain the
+ * raw allocation address for baFree. baRealloc is safe only for raw byte
+ * buffers; aligned typed objects require allocate-copy-free.
+ */
+#define baMalloc(s)        malloc(s)
+#define baRealloc(m, s)    realloc(m, s)
 #define baFree(m)          free(m)
 
 #include <time.h>

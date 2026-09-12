@@ -10,7 +10,7 @@
  ****************************************************************************
  *            PROGRAM MODULE
  *
- *   $Id: BufPrint.c 5839 2026-07-29 13:27:22Z wini $
+ *   $Id: BufPrint.c 5971 2026-09-11 10:01:39Z wini $
  *
  *   COPYRIGHT:  Real Time Logic, 2002 - 2026
  *
@@ -628,7 +628,7 @@ BufPrint_vprintf(BufPrint* o, const char* fmt, va_list argList)
                   }
                   else if ( ! (flags & FLAG_LONG_LONG) && (long)val < 0)
                   {
-                     val = -(long)val;
+                     val = (unsigned long)(0UL - (unsigned long)val);
                      prefix = "-";
                      prefixLen = 1;
                   }

@@ -10,7 +10,7 @@
  ****************************************************************************
  *   PROGRAM MODULE
  *
- *   $Id: TargConfig.h 5853 2026-08-17 09:48:31Z gianluca $
+ *   $Id: TargConfig.h 5987 2026-09-11 21:42:19Z gianluca $
  *
  *   COPYRIGHT:  Real Time Logic LLC, 2014 - 2026
  *
@@ -87,8 +87,11 @@ void sharkAssert(const char* file, int line)
 #endif
 
 /**
- *  baMalloc  should return 32-bit aligned addresses when succesful,
- *                          (void*)0 when not succesful.
+ * baMalloc returns (void*)0 on failure. baRealloc returns (void*)0 on failure
+ * or when not available. If SHARKSSL_UNALIGNED_MALLOC is 0, successful
+ * allocations must be aligned to SHARKSSL_ALIGNMENT. If it is 1, retain the
+ * raw allocation address for baFree. baRealloc is safe only for raw byte
+ * buffers; aligned typed objects require allocate-copy-free.
  */
 
 #ifdef __PIC32__
@@ -105,9 +108,8 @@ void sharkAssert(const char* file, int line)
 #else
 #include <lwip/mem.h>
 #include <lwip/sys.h>
-/* should return 32-bit aligned address */
 #define baMalloc(s)        mem_malloc(s)
-/* not implemeneted, which is OK */
+/* This port does not implement baRealloc. */
 #define baRealloc(m, s)    0
 #define baFree(m)          mem_free(m)
 #endif
