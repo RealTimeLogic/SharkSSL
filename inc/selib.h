@@ -10,7 +10,7 @@
  ****************************************************************************
  *   PROGRAM MODULE
  *
- *   $Id: selib.h 5853 2026-08-17 09:48:31Z gianluca $
+ *   $Id: selib.h 5995 2026-09-12 22:21:37Z gianluca $
  *
  *   COPYRIGHT:  Real Time Logic LLC, 2013 - 2026
  *
@@ -160,6 +160,16 @@ void printCiphersuite(U16 cipherSuite);
      */
    int seSec_handshake(
       SharkSslCon *s, SOCKET* sock, U32 timeout, const char* commonName);
+
+#if (SHARKSSL_TLS_1_3 && SHARKSSL_ENABLE_KEY_UPDATE)
+/**
+ * Sends a TLS 1.3 KeyUpdate handshake message.
+ *
+ * \return Zero on success or a negative value if the connection is not using
+ * TLS 1.3, output is pending, or a socket error occurs.
+ */
+int seSec_keyUpdate(SharkSslCon *s, SOCKET *sock, U8 requestUpdate);
+#endif
 
 /** Read data from socket stream and decode the encrypted data. The
     buffer is managed by SharkSSL and the data returned is valid until

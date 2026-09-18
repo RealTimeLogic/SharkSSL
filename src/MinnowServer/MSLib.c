@@ -10,7 +10,7 @@
  ****************************************************************************
  *   PROGRAM MODULE
  *
- *   $Id: MSLib.c 5853 2026-08-17 09:48:31Z gianluca $
+ *   $Id: MSLib.c 6042 2026-09-17 05:36:34Z wini $
  *
  *   COPYRIGHT:  Real Time Logic LLC, 2013 - 2026
  *
@@ -176,16 +176,41 @@ msRespCT(U8* dest, int* dlen, int contentLen, const U8* extHeader)
 static U8*
 getKeyVal(U8* key)
 {
-   if(key)
+   U8* val=(U8*)strchr((char*)key,':');
+   U8* end;
+   if(!val) return 0;
+   *val++=0;
+   while(*val==' ' || *val=='\t') val++;
+   end=val+strlen((char*)val);
+   while(end>val && (end[-1]==' ' || end[-1]=='\t')) *--end=0;
+   return val;
+}
+
+static int
+msEqual(const U8* a, const char* b)
+{
+   while(*a && tolower(*a)==tolower((U8)*b)) { a++; b++; }
+   return !*a && !*b;
+}
+
+static int
+msToken(const U8* value, const char* token)
+{
+   int len=(int)strlen(token);
+   while(*value)
    {
-      U8* val = key;
-      while(*val && *val != ':') val++;
-      *val++=0;
-      while(*val && *val == ' ') val++;
-      if(*val)
-         return val;
+      const U8* end;
+      const U8* next;
+      while(*value==' ' || *value=='\t') value++;
+      end=value;
+      while(*end && *end!=',') end++;
+      next=*end ? end+1 : end;
+      while(end>value && (end[-1]==' ' || end[-1]=='\t')) end--;
+      if(end-value==len && msstrstrn((U8*)value,len,(const U8*)token)==value)
+         return TRUE;
+      value=next;
    }
-   return 0; /* Not found */
+   return FALSE;
 }
 
 
@@ -298,7 +323,11 @@ MS_webServer(MS* o, WssProtocolHandshake* wph)
    /* Extracted HTTP header values */
    U8* key=0;
    U8* auth=0;
+   U8* version=0;
+   U8* host=0;
+   int upgrade=0,connection=0,invalid=0;
    wph->request=0;
+   wph->origin=0;
 
 #ifdef MS_SEC
    if(o->mst.isSecure)
@@ -324,7 +353,10 @@ MS_webServer(MS* o, WssProtocolHandshake* wph)
          break; 
       /* We use the SharkSSL send buffer for temp storage */
       if(!ptr)
-         sbuf = ptr = MS_prepSend(o, FALSE, &sblen);
+      {
+         sbuf=ptr=MST_getSendBufPtr(&o->mst);
+         sblen=MST_getSendBufSize(&o->mst);
+      }
       if(sblen < rc)
       {
          xprintf(("HTTP request header too big\n"));
@@ -335,13 +367,33 @@ MS_webServer(MS* o, WssProtocolHandshake* wph)
       sblen-=rc;
       if((end=msstrstrn(sbuf, ptr-sbuf, httpEndMarker)) != 0)
       {
-         sblen=end-sbuf;
-         memcpy(rbuf,sbuf,sblen);
-         end=rbuf+sblen;
+         int headerEnd=(int)(end-sbuf);
+         int capacity;
+         rc=(int)(ptr-sbuf);
+#ifdef MS_SEC
+         if(o->mst.isSecure)
+         {
+            rbuf=SharkSslCon_getBuf(o->mst.u.sc);
+            capacity=SharkSslCon_getBufLen(o->mst.u.sc);
+         }
+         else
+         {
+            rbuf=o->mst.u.b.recBuf;
+            capacity=o->mst.u.b.recBufSize;
+         }
+#else
+         rbuf=o->mst.b.recBuf;
+         capacity=o->mst.b.recBufSize;
+#endif
+         if(rc>capacity) return MS_ERR_HTTP_HEADER_OVERFLOW;
+         memcpy(rbuf,sbuf,rc);
+         end=rbuf+headerEnd;
          break;
       }
    }
    end+=(sizeof(httpEndMarker)-1);
+   o->rs.overflowLen=rc-(int)(end-rbuf);
+   o->rs.overflowPtr=o->rs.overflowLen ? end : 0;
    for(ptr = rbuf ; ptr < end;)
    {
       U8* next;
@@ -349,10 +401,12 @@ MS_webServer(MS* o, WssProtocolHandshake* wph)
       if(next)
       {
          *next = 0;
+         if(next==ptr) break;
          if(wph->request)
          {
             wph->hKeys[hIx]=ptr;
             wph->hVals[hIx]=getKeyVal(ptr);
+            if(!wph->hVals[hIx]) return MS_ERR_INVALID_HTTP;
             hIx++;
             if(hIx == MAX_HTTP_H_SIZE)
                return MS_ERR_HTTP_HEADER_OVERFLOW;
@@ -363,6 +417,7 @@ MS_webServer(MS* o, WssProtocolHandshake* wph)
       }
       else break;
    }
+   wph->hKeys[hIx]=wph->hVals[hIx]=0;
    if(!wph->request)
    {
       xprintf(("Cannot validate HTTP request header\n"));
@@ -371,34 +426,41 @@ MS_webServer(MS* o, WssProtocolHandshake* wph)
    for(i = 0; i < hIx; i++)
    {
       ptr = wph->hKeys[i];
-      switch(*ptr)
+      if(msEqual(ptr,"Sec-WebSocket-Key"))
       {
-         case 'A':
-         case 'a':
-            if(!auth && msstrstrn(ptr,100,(U8*)"Authorization"))
-               auth = wph->hVals[i];
-            break;
-
-         case 'O':
-         case 'o':
-            if(!wph->origin && msstrstrn(ptr,100,(U8*)"Origin"))
-               wph->origin = wph->hVals[i];
-            break;
-
-         case 's':
-         case 'S':
-            if(!key && msstrstrn(ptr,100,(U8*)"sec-WebSocket-Key"))
-               key=wph->hVals[i];
-            break;
-
-         case 'u':
-         case 'U':
-            if(msstrstrn(ptr,100,(U8*)"User-Agent") &&
-               msstrstrn(wph->hVals[i],200,(U8*)"Safari"))
-            {
-               delayOnSend=TRUE;
-            }
+         if(key) invalid=TRUE;
+         key=wph->hVals[i];
       }
+      else if(msEqual(ptr,"Sec-WebSocket-Version"))
+      {
+         if(version) invalid=TRUE;
+         version=wph->hVals[i];
+      }
+      else if(msEqual(ptr,"Host"))
+      {
+         if(host) invalid=TRUE;
+         host=wph->hVals[i];
+      }
+      else if(msEqual(ptr,"Upgrade"))
+         upgrade|=msToken(wph->hVals[i],"websocket");
+      else if(msEqual(ptr,"Connection"))
+         connection|=msToken(wph->hVals[i],"Upgrade");
+      else if(!auth && msEqual(ptr,"Authorization")) auth=wph->hVals[i];
+      else if(msEqual(ptr,"Origin")) wph->origin=wph->hVals[i];
+      else if(msEqual(ptr,"User-Agent") &&
+              msstrstrn(wph->hVals[i],200,(U8*)"Safari"))
+         delayOnSend=TRUE;
+   }
+   if(key || version || upgrade)
+   {
+      U8* http=(U8*)strrchr((char*)wph->request,' ');
+      if(invalid || !key || !version || !host || !*host || !upgrade ||
+         !connection || strncmp((char*)wph->request,"GET ",4) || !http ||
+         strcmp((char*)http," HTTP/1.1") || strcmp((char*)version,"13") ||
+         strlen((char*)key)!=24 ||
+         strspn((char*)key,"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/")!=22 ||
+         key[22]!='=' || key[23]!='=' || !strchr("AQgw",key[21]))
+         invalid=TRUE;
    }
    sblen=MST_getSendBufSize(&o->mst);
    sbuf=MST_getSendBufPtr(&o->mst); /* Using zero copy SharkSSL API */
@@ -420,6 +482,12 @@ MS_webServer(MS* o, WssProtocolHandshake* wph)
       }
       else
          rc=MS_ERR_ALLOC;
+   }
+   else if(invalid)
+   {
+      static const U8 rsp[]={"HTTP/1.1 400 Bad Request\r\nConnection: close\r\nContent-Length: 0\r\n\r\n"};
+      ptr=msCpAndInc(sbuf,&sblen,rsp,sizeof(rsp)-1);
+      rc=ptr ? MS_ERR_INVALID_HTTP : MS_ERR_ALLOC;
    }
    else if(key) /* Valid WebSocket request */
    {
@@ -555,16 +623,16 @@ MS_close(MS *o, int statusCode)
 {
    if(se_sockValid(o->mst.sock))
    {
+      U8* ctrlBuf=MS_prepSend(o, FALSE, 0);
       if(statusCode)
       {
-         U8* ctrlBuf=MS_prepSend(o, FALSE, 0);
          /* 2 byte status code RFC6455 5.5.1 */
          ctrlBuf[0] = (U8)((unsigned)statusCode >> 8); /* high */
          ctrlBuf[1] = (U8)statusCode; /* low */
          MS_send(o,WSOP_Close,2);
       }
       else
-         MS_send(o,WSOP_Close,2);
+         MS_send(o,WSOP_Close,0);
    }
    se_close(o->mst.sock);
    return statusCode < 0 ? statusCode : -statusCode;
@@ -589,18 +657,24 @@ MS_rawRead(MS* o, U8 **buf, U32 timeout)
      L_readMore:
       if( (len=MST_read(&o->mst, buf, timeout)) <= 0 )
       {
-         o->rs.frameLen=0;
-         if(o->rs.frameHeaderIx > 0 && len)
-         {
-            o->rs.isTimeout = FALSE;
-            o->rs.frameHeaderIx = 0;
-            return o->rs.frameHeader[0] == WSOP_Close ? 0 : len;
-         }
-         o->rs.isTimeout = TRUE;
+         if(len<0) o->rs.frameHeaderIx=0;
+         o->rs.isTimeout = len==0;
          return len;
       }
       ptr = *buf;
    }
+   while(o->rs.frameHeaderIx<2)
+   {
+      if(!len) goto L_readMore;
+      newFrame=TRUE;
+      o->rs.frameHeader[o->rs.frameHeaderIx++]=*ptr++;
+      len--;
+   }
+   if(!(o->rs.frameHeader[1]&0x80) || (o->rs.frameHeader[0]&0x70) ||
+      ((o->rs.frameHeader[0]&8) &&
+       (!(o->rs.frameHeader[0]&0x80) || (o->rs.frameHeader[1]&0x7F)>125)))
+      return MS_close(o,1002);
+   if((o->rs.frameHeader[1]&0x7F)==127) return MS_close(o,1009);
    /*Do we have a complete frame header? Loop: cp header and decrement 'len' */
    while( o->rs.frameHeaderIx < 6 ||
           (o->rs.frameHeaderIx < 8 && (o->rs.frameHeader[1] & 0x7F) > 125) )
@@ -613,8 +687,6 @@ MS_rawRead(MS* o, U8 **buf, U32 timeout)
    }
    if(newFrame) /* Start of new frame */
    {
-      if( ! (o->rs.frameHeader[1] & 0x80) )
-         return MS_close(o, 1002);
       o->rs.bytesRead=0;
       if(o->rs.frameHeaderIx == 6)
       {
@@ -624,11 +696,9 @@ MS_rawRead(MS* o, U8 **buf, U32 timeout)
       else
       {
          baAssert(o->rs.frameHeaderIx == 8);
-         /* We only accept 16 bit extended frames */
-         if((o->rs.frameHeader[1] & 0x7F) > 126)
-            return MS_close(o, 1009);
          o->rs.frameLen = (int)(((U16)o->rs.frameHeader[2]) << 8);
          o->rs.frameLen |= o->rs.frameHeader[3];
+         if(o->rs.frameLen<126) return MS_close(o,1002);
          o->rs.maskPtr = o->rs.frameHeader+4;
       }
    }
@@ -666,6 +736,10 @@ MS_read(MS* o, U8 **buf, U32 timeout)
    U8* ctrlBuf=0;
   L_readMore:
    len = MS_rawRead(o, buf, timeout);
+   /* A partial control frame must finish within this call's read timeout. */
+   if(!len && o->rs.isTimeout && o->rs.frameHeaderIx &&
+      (o->rs.frameHeader[0]&8))
+      return MS_close(o,1001);
    if(len >= 0 && !o->rs.isTimeout)
    {
       switch(o->rs.frameHeader[0])
@@ -677,29 +751,34 @@ MS_read(MS* o, U8 **buf, U32 timeout)
          /* Control frames below */
 
          case WSOP_Close:
-            if(o->rs.frameLen >= 2)
-            {
-               unsigned int eCode;
-               ctrlBuf=*buf;
-               eCode = (unsigned int)ctrlBuf[0] << 8;
-               eCode |= ctrlBuf[1];
-               MS_close(o, 1000);
-               return ((int)eCode) < 0 ? (int)eCode : -((int)eCode);
-            }
-            return MS_close(o, 1000);
-
          case WSOP_Ping:
          case WSOP_Pong: /* RFC allows unsolicited pongs */
+            if(!ctrlBuf)
+               ctrlBuf=MS_prepSend(o, FALSE, 0);
+            if(MST_getSendBufSize(&o->mst)<o->rs.frameLen+2)
+               return MS_close(o,1009);
             if(o->rs.frameLen)
             {
-               if(!ctrlBuf)
-                  ctrlBuf=MS_prepSend(o, FALSE, 0);
                /* Cursor is bytesRead - len */
                if(o->rs.frameLen > 125) /* not allowed */
                   return MS_close(o, 1002);
                memcpy(ctrlBuf + o->rs.bytesRead - len, *buf, len);
                if(o->rs.bytesRead < o->rs.frameLen)
                   goto L_readMore;
+            }
+            if(o->rs.frameHeader[0]==WSOP_Close)
+            {
+               int code=1000;
+               if(o->rs.frameLen==1) return MS_close(o,1002);
+               if(o->rs.frameLen>=2)
+               {
+                  code=((int)ctrlBuf[0]<<8)|ctrlBuf[1];
+                  if(!((code>=1000 && code<=1014 && code!=1004 &&
+                        code!=1005 && code!=1006) || (code>=3000 && code<5000)))
+                     return MS_close(o,1002);
+               }
+               MS_close(o,1000);
+               return -code;
             }
             if(o->rs.frameHeader[0] == WSOP_Ping)
                MS_send(o,WSOP_Pong,o->rs.frameLen);

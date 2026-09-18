@@ -11,7 +11,7 @@
  ****************************************************************************
  *   PROGRAM MODULE
  *
- *   $Id: WsClientLib.c 5853 2026-08-17 09:48:31Z gianluca $
+ *   $Id: WsClientLib.c 6042 2026-09-17 05:36:34Z wini $
  *
  *   COPYRIGHT:  Real Time Logic LLC, 2014 - 2026
  *
@@ -47,8 +47,7 @@ when connecting to any WS enabled server.
 The following is a short explanation on the HTTP headers used.
 
 Host:
-   This header is not required by WebSocket, but may be required if
-   the server is multihomed, i.e. if the server hosts multiple domains.
+   Identifies the server's host name for the HTTP/1.1 request.
 
 Origin:
    A security related header required when using WebSocket from
@@ -123,8 +122,9 @@ strstrn(U8* str, int slen, const U8* substr)
 static U8*
 msCpAndInc(U8* dest, int* dlen, const U8* src, int slen)
 {
-   if(!dest || *dlen < 0) return 0;
+   if(!dest) return 0;
    if(!slen) slen=strlen((char*)src);
+   if(slen > *dlen) return 0;
    *dlen -= slen;
    memcpy(dest,src,slen);
    return dest+slen;
@@ -133,6 +133,64 @@ msCpAndInc(U8* dest, int* dlen, const U8* src, int slen)
 
 
 /************************ End helper functions ***************************/
+
+static int
+wscToken(U8* value, int len, const char* token)
+{
+   int n=(int)strlen(token);
+   U8* limit=value+len;
+   while(value<limit)
+   {
+      U8* end;
+      U8* next;
+      while(value<limit && (*value==' ' || *value=='\t')) value++;
+      end=value;
+      while(end<limit && *end!=',') end++;
+      next=end<limit ? end+1 : end;
+      while(end>value && (end[-1]==' ' || end[-1]=='\t')) end--;
+      if(end-value==n && strstrn(value,n,(const U8*)token)==value) return TRUE;
+      value=next;
+   }
+   return FALSE;
+}
+
+static int
+wscResponse(U8* buf, int len)
+{
+   U8* end=buf+len;
+   U8* line;
+   unsigned flags=0;
+   if(len<13 || memcmp(buf,"HTTP/1.1 101 ",13)) return FALSE;
+   line=strstrn(buf,len,(const U8*)"\r\n");
+   if(!line) return FALSE;
+   for(line+=2; line<end && *line!='\r';)
+   {
+      U8* next=strstrn(line,(int)(end-line),(const U8*)"\r\n");
+      U8* value;
+      int n;
+      if(!next) return FALSE;
+      value=(U8*)memchr(line,':',next-line);
+      if(!value) return FALSE;
+      n=(int)(value-line)+1;
+      value++;
+      while(value<next && (*value==' ' || *value=='\t')) value++;
+      if(n==21 && strstrn(line,n,(const U8*)"Sec-WebSocket-Accept:")==line)
+      {
+         U8* last=next;
+         while(last>value && (last[-1]==' ' || last[-1]=='\t')) last--;
+         /* Expected value for the fixed standalone-client key. */
+         if((flags&1) || last-value!=28 ||
+            memcmp(value,"naOAKovbFpel9xG/zUizLVkr910=",28)) return FALSE;
+         flags|=1;
+      }
+      else if(n==8 && strstrn(line,n,(const U8*)"Upgrade:")==line)
+         flags|=wscToken(value,(int)(next-value),"websocket") ? 2 : 0;
+      else if(n==11 && strstrn(line,n,(const U8*)"Connection:")==line)
+         flags|=wscToken(value,(int)(next-value),"Upgrade") ? 4 : 0;
+      line=next+2;
+   }
+   return flags==7;
+}
 
 /* wscProtocolHandshake: WS HTTP request/response handshake.
  *
@@ -247,7 +305,7 @@ wscProtocolHandshake(WscState* wss, U32 tmo, const char* host,
                if( (rc = se_recv(wss->sock,ptr,len,tmo)) <= 0)
                   break;
                rcx+=rc;
-               if(strstrn(buf, len, (U8*)"\r\n\r\n"))
+               if(strstrn(buf, rcx, (U8*)"\r\n\r\n"))
                {
                   rc=rcx;
                   break;
@@ -272,27 +330,11 @@ wscProtocolHandshake(WscState* wss, U32 tmo, const char* host,
          else
          {  /* Parse (validate) server's HTTP response */
             int len=rc;
-            ptr=buf;
-            /* The value in Sec-WebSocket-Accept is designed for
-             * browsers so they can detect malicious JavaScript
-             * code. The security concept is not relevant to non
-             * browser clients. We only check for the header. The
-             * server resource is not a WS if the response does not
-             * include Sec-WebSocket-Accept.
-             */
-            if(!strstrn(buf, len, (U8*)"Sec-WebSocket-Accept"))
-               xprintf(("WebSocket connection not accepted by server\n"));
+            ptr=strstrn(buf,len,(const U8*)"\r\n\r\n");
+            if(!ptr || !wscResponse(buf,(int)(ptr-buf)+4))
+               rc=-2;
             else
             {
-                /* Find end of HTTP response */
-               ptr=strstrn(buf, len, (U8*)"\r\n\r\n");
-               if(!ptr) /* Ref-Underflow */
-               {
-                  xprintf(("Cannot validate HTTP header response\n"));
-                  rc=-2;
-               }
-               else /* Successful HTTP and WS handshake */
-               {
                   rc=ptr-buf+4;
                   if(rc < len)
                   {
@@ -300,7 +342,6 @@ wscProtocolHandshake(WscState* wss, U32 tmo, const char* host,
                      wss->overflowLen=len-rc;
                   }
                   rc=0; /* Success */
-               }
             }
          }
       }
@@ -331,6 +372,7 @@ wscRawWrt(WscState* wss, U8 opCode,const U8* buf,int len)
    U8* sbuf;
    U8* ptr;
    U8* maskPtr;
+   if(len<0 || len>0xFFFF) return -1;
 #ifdef WSC_DUAL
    if(wss->scon)
    {
@@ -352,26 +394,12 @@ wscRawWrt(WscState* wss, U8 opCode,const U8* buf,int len)
    sbuf[0] = opCode;
    if(len <= 125) /* Standard "Payload len" */
    {
-      if(len)
-      {
          sbuf[1] = 0x80 | (U8)len; /* Mask bit set + len */
          maskPtr=sbuf+2;
          frameLen=len+6;
-      }
-      else
-      {
-         sbuf[1] = 0; /* Mask bit not set since we do not have payload */
-#ifdef WSC_DUAL
-         return wss->scon ? seSec_write(wss->scon, wss->sock, 0, 2) :
-            se_send(wss->sock, sbuf, 2);
-#else
-         return seSec_write(wss->scon, wss->sock, 0, 2);
-#endif
-      }
    }
    else /* Extended payload */
    {
-      if(len > 0xFFFF) return -1; /* We accept a max length of 2^16 */
       sbuf[1] = 0x80 | 126; /* 126 -> 16 bit extended payload */
       sbuf[2] = (U8)((unsigned)len >> 8); /* high */
       sbuf[3] = (U8)len; /* low */
@@ -379,13 +407,8 @@ wscRawWrt(WscState* wss, U8 opCode,const U8* buf,int len)
       frameLen=len+8;
    }
 
-   /* The WS mask is required, however the security concept does not
-    * apply to non browsers so we can safely use any value. RFC6455
-    * 5.3. The 4 byte mask is whatever random mumber (uninitialized
-    * value) that is stored in the buffer 'maskPtr', except for the
-    * first byte, which is set to 0x55.
-    */
-   maskPtr[0]=0x55;
+   /* This standalone client retains its fixed-mask policy. */
+   memset(maskPtr,0x55,4);
    ptr=maskPtr+4; /* ptr: Payload start */
 
    /* Mask payload data: RFC6455 5.3.  Client-to-Server Masking */
@@ -483,6 +506,18 @@ wscRawRead(WscState* wss,U8 **buf,U32 timeout)
       ptr = *buf;
    }
    wss->isTimeout=0;
+   while(wss->frameHeaderIx<2)
+   {
+      if(!len) goto L_readMore;
+      newFrame=TRUE;
+      wss->frameHeader[wss->frameHeaderIx++]=*ptr++;
+      len--;
+   }
+   if((wss->frameHeader[1]&0x80) || (wss->frameHeader[0]&0x70) ||
+      ((wss->frameHeader[0]&8) &&
+       (!(wss->frameHeader[0]&0x80) || (wss->frameHeader[1]&0x7F)>125)))
+      return wscClose(wss,1002);
+   if((wss->frameHeader[1]&0x7F)==127) return wscClose(wss,1009);
    /* Do we have a complete frame header ? */
    while(wss->frameHeaderIx < 2 ||
          (wss->frameHeaderIx < 4 && (wss->frameHeader[1] & 0x7F) > 125))
@@ -498,17 +533,14 @@ wscRawRead(WscState* wss,U8 **buf,U32 timeout)
       wss->bytesRead=0;
       if(wss->frameHeaderIx == 2)
       {
-         /* We do not check MASK since servers must not use it */
          wss->frameLen = wss->frameHeader[1];
       }
       else
       {
          baAssert(wss->frameHeaderIx == 4);
-         /* We only accept 16 bit extended frames */
-         if((wss->frameHeader[1] & 0x7F) > 126)
-            return wscClose(wss, 1009);
          wss->frameLen = (int)(((U16)wss->frameHeader[2]) << 8);
          wss->frameLen |= wss->frameHeader[3];
+         if(wss->frameLen<126) return wscClose(wss,1002);
       }
    }
    *buf = ptr; /* Adjust payload for consumed header (rec or overflow data) */
@@ -550,6 +582,10 @@ wscRead(WscState* wss, U8 **buf, U32 timeout)
    U8 ctrlBuf[125]; /* max control frame payload */
   L_readMore:
    len = wscRawRead(wss, buf, timeout);
+   /* The control scratch buffer belongs to this read call. */
+   if(!len && wss->isTimeout && wss->frameHeaderIx &&
+      (wss->frameHeader[0]&8))
+      return wscClose(wss,1001);
    if(len >= 0 && !wss->isTimeout)
    {
       switch(wss->frameHeader[0])
@@ -561,8 +597,6 @@ wscRead(WscState* wss, U8 **buf, U32 timeout)
          /* Control frames below */
 
          case WSOP_Close:
-            return wscClose(wss, 1000);
-
          case WSOP_Ping:
          case WSOP_Pong: /* RFC allows unsolicited pongs */
             if(wss->frameLen)
@@ -573,6 +607,19 @@ wscRead(WscState* wss, U8 **buf, U32 timeout)
                memcpy(ctrlBuf + wss->bytesRead - len, *buf, len);
                if(wss->bytesRead < wss->frameLen)
                   goto L_readMore;
+            }
+            if(wss->frameHeader[0]==WSOP_Close)
+            {
+               int code;
+               if(wss->frameLen==1) return wscClose(wss,1002);
+               if(wss->frameLen>=2)
+               {
+                  code=((int)ctrlBuf[0]<<8)|ctrlBuf[1];
+                  if(!((code>=1000 && code<=1014 && code!=1004 &&
+                        code!=1005 && code!=1006) || (code>=3000 && code<5000)))
+                     return wscClose(wss,1002);
+               }
+               return wscClose(wss,1000);
             }
             if(wss->frameHeader[0] == WSOP_Ping)
                wscSendCtrl(wss,WSOP_Pong,ctrlBuf,wss->frameLen);

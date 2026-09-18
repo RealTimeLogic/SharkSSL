@@ -10,7 +10,7 @@
  ****************************************************************************
  *   PROGRAM MODULE
  *
- *   $Id: selib.c 5853 2026-08-17 09:48:31Z gianluca $
+ *   $Id: selib.c 6002 2026-09-13 06:30:52Z gianluca $
  *
  *   COPYRIGHT:  Real Time Logic LLC, 2013 - 2026
  *
@@ -307,24 +307,25 @@ seSec_readOrHandshake(
             /* First: send pending data if any */
             if ((nb = SharkSslCon_getHandshakeDataLen(s)) != 0)
             {
-               #if 1
                int sentbytes = se_send(sock, (void *)SharkSslCon_getHandshakeData(s), nb);
-               #else  /* test */
-               int sentbytes = se_send(sock, (void *)SharkSslCon_getHandshakeData(s), (nb > 10 ? (nb >> 1) : nb));
-               #endif
                if (sentbytes < 0)
                {
                   return -1;
                }
-               else if (sentbytes < nb)  /* HS buffer partially sent */
+               else
                {
-                  /* new API function */
                   SharkSslCon_setHandshakeDataSent(s, (U16)sentbytes);
                   NTD xprintf(("sent %d/%d handshake bytes\n", sentbytes, nb));
                }
-               else
+               /* Continue sending a partially transmitted handshake message. */
+               if (SharkSslCon_getHandshakeDataLen(s))
                {
-                  NTD xprintf(("sent %d handshake bytes\n", sentbytes));
+                  if (!sentbytes)
+                  {
+                     return 0;
+                  }
+                  readLen = 0;
+                  break;
                }
             }
 
@@ -388,6 +389,35 @@ seSec_handshake(
 }
 
 
+#if (SHARKSSL_TLS_1_3 && SHARKSSL_ENABLE_KEY_UPDATE)
+int
+seSec_keyUpdate(SharkSslCon *s, SOCKET *sock, U8 requestUpdate)
+{
+   int sentbytes;
+   U16 nb;
+
+   if (!SharkSslCon_keyUpdate(s, requestUpdate))
+   {
+      return -1;
+   }
+   while ((nb = SharkSslCon_getHandshakeDataLen(s)) != 0)
+   {
+      sentbytes = se_send(sock, (void*)SharkSslCon_getHandshakeData(s), nb);
+      if (sentbytes < 0)
+      {
+         return -1;
+      }
+      SharkSslCon_setHandshakeDataSent(s, (U16)sentbytes);
+      if (!sentbytes)
+      {
+         return -1;
+      }
+   }
+   return 0;
+}
+#endif
+
+
 int
 seSec_read(SharkSslCon *s, SOCKET* sock, U8 **buf, U32 timeout)
 {
@@ -398,7 +428,7 @@ seSec_read(SharkSslCon *s, SOCKET* sock, U8 **buf, U32 timeout)
 int seSec_write(SharkSslCon *s, SOCKET* sock, U8* buf, int maxLen)
 {
    SharkSslCon_RetVal retVal;
-   int nb;
+   int nb, sentbytes;
    if(maxLen > 0xFFFF)
       return -1;
    for (;;)
@@ -421,6 +451,20 @@ int seSec_write(SharkSslCon *s, SOCKET* sock, U8* buf, int maxLen)
                break;
             }
             return maxLen; /* All data encrypted and sent. */
+
+         case SharkSslCon_Handshake:
+            /* Send an automatic KeyUpdate before retrying application data. */
+            while ((nb = SharkSslCon_getHandshakeDataLen(s)) != 0)
+            {
+               sentbytes = se_send(sock, (void*)SharkSslCon_getHandshakeData(s), nb);
+               if (sentbytes <= 0)
+               {
+                  SharkSslCon_setHandshakeDataSent(s, 0);
+                  return -1;
+               }
+               SharkSslCon_setHandshakeDataSent(s, (U16)sentbytes);
+            }
+            break; /* Retry the same application data with the new key. */
 
          case SharkSslCon_AlertSend:
             if (SharkSslCon_getAlertLevel(s) == SHARKSSL_ALERT_LEVEL_WARNING)

@@ -10,7 +10,7 @@
  ****************************************************************************
  *			      HEADER
  *
- *   $Id: MSLib.h 5853 2026-08-17 09:48:31Z gianluca $
+ *   $Id: MSLib.h 6042 2026-09-17 05:36:34Z wini $
  *
  *   COPYRIGHT:  Real Time Logic LLC, 2013 - 2026
  *
@@ -49,8 +49,8 @@ struct MST;
 
 /* RFC6455 Page 29: Opcode:  4 bits.
  * WS Opcodes with FIN=1. We do not manage WS fragments (FIN=0/1)
- * since it's not really used and the complexity is not something you
- * want in a tiny device.
+ * to keep the implementation small. Payloads are limited to 65535 bytes;
+ * UTF-8 is not validated. Ordinary stream reads may split a frame.
  */
 #define WSOP_Text   0x81
 #define WSOP_Binary 0x82
@@ -439,6 +439,11 @@ U8* MS_respCT(MS* o, int* dlen, int contentLen, const U8* extHeader);
     <b>Note:</b> WssProtocolHandshake#fetchPage must have been
     initialized for the function to respond to HTTP GET requests.
 
+    WebSocket upgrades require GET, HTTP/1.1, Host, the Upgrade/Connection
+    tokens, version 13, and a base64 key encoding 16 bytes. Invalid upgrades
+    receive HTTP 400. Split headers must fit the existing send buffer and
+    the available receive storage; larger headers return a size error.
+
     \return Zero on successful WebSocket connection upgrade. Returns
     an error code for all other operations, including fetching static
     content using the callback MSFetchPage -- in this case,
@@ -577,6 +582,8 @@ int MS_close(MS *o, int statusCode);
     \return The payload data length or zero for zero length frames and
     timeout.  The function returns one of the See \link MSLibErrCodes
     Error Codes \endlink on error.
+    An incomplete control frame that reaches the read timeout closes with
+    status 1001. Ordinary data frames may continue after a timeout.
 */
 int MS_read(MS *o,U8 **buf,U32 timeout);
 

@@ -10,7 +10,7 @@
  ****************************************************************************
  *   PROGRAM MODULE
  *
- *   $Id: WsClientLib.h 5853 2026-08-17 09:48:31Z gianluca $
+ *   $Id: WsClientLib.h 6042 2026-09-17 05:36:34Z wini $
  *
  *   COPYRIGHT:  Real Time Logic LLC, 2014 - 2026
  *
@@ -144,7 +144,11 @@ extern "C" {
   to NULL if it's not required by the server. The Origin header should
   only be required by a server when the request is sent from a
   browser.
-   \return Zero success.
+   \return Positive on success: the TLS trust result, or 1 without TLS.
+   Zero or a negative value means the handshake did not complete.
+   Status 101, Upgrade/Connection tokens, and the accept value are checked.
+   The standalone client retains a fixed nonce and mask. It does not validate
+   UTF-8 or support fragmented messages or payload lengths above 65535.
  */
 int wscProtocolHandshake(WscState* wss,U32 tmo, const char* host,
                          const char* path,const char* origin);
@@ -200,6 +204,8 @@ int wscClose(WscState* wss, int statusCode);
 
     \return The payload data length or zero for zero length frames and
     timeout. The function returns a negative value on error.
+    An incomplete control frame that reaches the read timeout closes with
+    status 1001. Ordinary data frames may continue after a timeout.
 */
 int wscRead(WscState* wss, U8 **buf, U32 timeout);
 
