@@ -10,7 +10,7 @@
  ****************************************************************************
  *   PROGRAM MODULE
  *
- *   $Id: LED-SMQ.c 5855 2026-08-17 09:51:06Z gianluca $
+ *   $Id: LED-SMQ.c 6056 2026-09-20 05:09:33Z wini $
  *
  *   COPYRIGHT:  Real Time Logic LLC, 2014 - 2026
  *
@@ -809,7 +809,14 @@ mainTask(SeCtx* ctx)
       See the following link for more information:
       realtimelogic.com/ba/doc/en/C/shark/md_md_Certificate_Management.html
       */
-   SharkSsl_setCAList(&sharkSsl, sharkSSL_New_RTL_ECC_CA);
+   if(!SharkSsl_setCAListEx(&sharkSsl, sharkSSL_New_RTL_ECC_CA,
+                          sizeof(sharkSSL_New_RTL_ECC_CA)))
+   {
+      xprintf(("Invalid CA list\n"));
+      SharkSsl_destructor(&sharkSsl);
+      setProgramStatus(ProgramStatus_SocketError);
+      return;
+   }
 
    SharkMQ_constructor(&smq, buf, sizeof(buf));
    SharkMQ_setCtx(&smq, ctx);  /* Required for bare-metal env. */
